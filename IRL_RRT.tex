@@ -25,8 +25,10 @@
 \title{\LARGE \bf
 RRT-IRL whatever title we use.
 }
-
-
+\usepackage{mathtools}
+\usepackage{amsmath}  
+\DeclareMathOperator*{\argmin}{\arg\!\min} 
+\DeclareMathOperator*{\argmax}{\arg\!\max} 
 \author{Noe perez$^{1}$ Kyriacos Shiarliss$^{2}$% <-this % stops a space
 %\thanks{*This work was not supported by any organization}% <-this % stops a space
 % \thanks{$^{1}$Albert Author is with Faculty of Electrical Engineering, Mathematics and Computer Science,
@@ -49,6 +51,7 @@ RRT-IRL whatever title we use.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
+
 
 \end{abstract}
 
@@ -73,20 +76,11 @@ In this paper, we present methods for effectively learning RRT$^*$ cost function
 
 
 
-\section{Background}
 
-\subsection{Related Work}
+\section{Related Work}
 
-The main purpose of our work is to replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL, which is learning the underlying cost function to that planner using data from demonstrations.
-This challenge has been tackled several times by researchers that seek to make IRL more applicable to real world situations such as those encountered in robotics. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method developed in \cite{} was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator(LQR). Since linear dynamics are hard to come by in robotics, in \cite{levine} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to hte problem, use hybrid appriaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{iohc} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, at the same time as using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{graphioc}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs.
-
-
-IRL, introduced in [], is the field whose very purpose is to extract cost functions from demonstrations. It is a predominantly iterative process, that can be split into 4 main stages.
-
-\begin{itemize}
-\item First item
-
-\end{itemize}
+In this paper we replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL i.e. learning the underlying cost function to that planner using data from demonstrations.
+This challenge has been tackled several times by researchers that seek to make IRL more applicable to real world applications such as those encountered in robotics. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method developed in \cite{} was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator(LQR). Since linear dynamics are hard to come by in robotics, in \cite{levine} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to the problem, use hybrid approaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{iohc} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, while at the same time using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{graphioc}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs.
 
  % Planning, is an essential step in this process because the performance of the learner's current reward function needs to be
  % assesed so that the appropriate update on can take place. Initially, the IRL problem was introduced as an MDP and therefore the planning step involved finding the optimal policy under different objectives[cite original],[max ent]. While the concept of learning cost functions was appealing, the costly planning procedure as well as the limited modeling capacity of MDPs limited the application of these methods to robotics.       
@@ -96,10 +90,37 @@ IRL, introduced in [], is the field whose very purpose is to extract cost functi
 
 
   Due to IRL's appealing properties, the robotics community was quick to adopt the concept and use it in many real world applications, with social navigation and compliance being one of the most noticable ones. A cost function that produces socially acceptable paths in different situations clearly satisfies the motivation behind Learning from Demonstration. It is very easy for us to socially navigate the environment, or even drive a robot through a crowd, but it is very hard to exactly determine the cost function we considered when eliciting that behaviour. The first application of IRL to crowd navigation can be found in \cite{henry_2010}, along with several contributions to the oribinal algorithm of Maximum Entropy Inverse Reinforcement Learning[\cite{ziebart2008maximum}. In [cite vasquez and aras] these ideas are enriched with new features as well as a software framework. Due to the complexity of the social navigation task and the aforementioned limitations of MDP's the authors employ frequent replanning as well as extensive use of parallel computation in order to achieve the task. Apart from crowd navigation, other work [cite wolfram] focusses on social compliance, extracting human intention, driving styles and route preferences. In fact most application of IRL to the real world have focused on modeling and/or replicating some aspect of human behaviour. 
-  % Prior to IRL related approaches several contributions have been presented regarding the application of learning to the task of human-aware navigation: supervised learning is used in \cite{Trautman_2010} to learn appropriate human motion prediction models that take into account human-robot interaction when navigating in crowded scenarios. Unsupervised learning is used by Luber et al. \cite{luber_iros2012} to determine socially-normative motion prototypes, which are then employed to infer social costs when planning paths. In \cite{6696576}, a model based on social forces is employed. The parameters for the social forces are learnt from feedback provided by users.
 
 
+\section{Background}
+\subsection{The Path Planning problem}
+When planning a path, a robot considers a space $\mathcal{C}$, of possible configurations $s \in \mathcal{C}$. These configurations are usually continuous, and often represent spacial quantities such as possition and orientation as well as their derivatives. A path planner is called to plan an obstacle free path $\zeta = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $s_0$ to a goal configuration  $s_g$. There could be however several paths to the goal state so path planners usualy employ a \emph{cost functional}, $C(\zeta)$, and choose the optimal path $\zeta^*$ which satisfies,
+\begin{equation}
+ 	\zeta^* = \argmin_{\zeta \in Z_{0,g}} C(\zeta)
+\end{equation}
+where $Z_{0,g}$ is the set of all possible paths from $s_0$ to $s_g$, and may be infinite.
+This cost functional is therefore similar to the one encountered in Optimal Control(OC) as well as Value which is used in Reinforcement Learning(RL). A fundamental difference however is that optimising $C(\zeta)$ in our case gives an open loop plan, instread for example a closed loop policy in the case of Reinforcement Learning. 
 
+While the form of the cost functional may vary significantly depending on the application, it is very common to assign a cost function that assigns a cost to configuration pairs $c(s_i,s_j)$. The total cost $C(\zeta)$ of the path, is the sum of the individual costs along the path i.e.
+\begin{equation}
+	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1})
+\end{equation}
+
+\subsection{The Inverse problem}
+The path planning problem above tackles the problem of finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\tilde{\zeta_0},\tilde{\zeta_1}...\tilde{\zeta_D})$ where $\tilde{\zeta_i}$ denotes an observed path consisting in turn of various configuration sequences. Although the cost function that generated these observations is unknown, we assume access to a parametric form of the cost, namely,
+\begin{equation}
+	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j)
+\end{equation}
+Where $\mathbf{w}$ is a K dimentional vector of unknown weights and $\mathbf{f}(s_i,s_j)$ is a feature vector of the same dimentionality. 
+Using this notation and noting that $\mathbf{w}$ is not configuration dependant, we can express the total cost of the path in a parametric form,
+
+\begin{equation}
+	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) = \mathbf{w}^T \mathbf{F}(\zeta)
+\end{equation}
+where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
+
+
+When the cost function is expressed in this form, the inverse problem reduces to finding the weight vector that assigns 
 
 \subsection{Preliminaries}
 
