@@ -26,7 +26,9 @@
 RRT-IRL whatever title we use.
 }
 \usepackage{mathtools}
-\usepackage{amsmath}  
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{color}
 \DeclareMathOperator*{\argmin}{\arg\!\min} 
 \DeclareMathOperator*{\argmax}{\arg\!\max} 
 \author{Noe perez$^{1}$ Kyriacos Shiarliss$^{2}$% <-this % stops a space
@@ -38,7 +40,7 @@ RRT-IRL whatever title we use.
 %         Dayton, OH 45435, USA
 %         {\tt\small b.d.researcher@ieee.org}}%
 }
-
+\newcommand{\jm}[1]{\textcolor{blue}{Joao: #1}}
 
 \begin{document}
 
@@ -94,30 +96,30 @@ This challenge has been tackled several times by researchers that seek to make I
 
 \section{Background}
 \subsection{The Path Planning problem}
-When planning a path, a robot considers a space $\mathcal{C}$, of possible configurations $s \in \mathcal{C}$. These configurations are usually continuous, and often represent spacial quantities such as possition and orientation as well as their derivatives. A path planner is called to plan an obstacle free path $\zeta = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $s_0$ to a goal configuration  $s_g$. There could be however several paths to the goal state so path planners usualy employ a \emph{cost functional}, $C(\zeta)$, and choose the optimal path $\zeta^*$ which satisfies,
+When planning a path, a robot considers a space $\mathcal{C}$, of possible configurations $s \in \mathcal{C}$. \jm{remove ``the robot considers'' and rephrase. ``When planning a path, we need to consider the space $\mathcal{C}$ of possible configurations of the robot. The configurations $s \in \mathcal{C}$'' represent spacial quantities..} These configurations are usually continuous, and often represent spacial quantities such as position and orientation as well as their derivatives \jm{In Robotics literature, ``configuration space'' stands for ``valid poses while accounting for obstacles'' (see Handbook of Robotics, by B. Sicilliano, Section 5.1). So it does not include velocities. You could say that what you have is the state of the robot.}. A path planner is called to plan an obstacle free path $\zeta = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $s_0$ to a goal configuration  $s_g$ \jm{to strengthen the previous point, what you have here is a sequence of poses (path). You don't care about the velocities at those poses. A sequence of poses + velocities would be a \emph{trajectory}.}. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$, and choose the optimal path $\zeta^*$ which satisfies,
 \begin{equation}
  	\zeta^* = \argmin_{\zeta \in Z_{0,g}} C(\zeta)
 \end{equation}
-where $Z_{0,g}$ is the set of all possible paths from $s_0$ to $s_g$, and may be infinite.
-This cost functional is therefore similar to the one encountered in Optimal Control(OC) as well as Value which is used in Reinforcement Learning(RL). A fundamental difference however is that optimising $C(\zeta)$ in our case gives an open loop plan, instread for example a closed loop policy in the case of Reinforcement Learning. 
+where $Z_{0,g}$ is the set of all possible paths from $s_0$ to $s_g$, and may be infinite.\jm{Minor notation issue: you've implicitly defined $g$ to be an integer, because the subscript of a configuration is its index in a sequence. That looks weird, especially in $Z_{0,g}$. It would look better with $g\in \mathcal{C}$ as the goal, and maybe $o\in\mathcal{C}$ as the initial configuration. Then you have $Z_{o,g}$, and your path is constrained to $s_0 = o, s_{l_\zeta} = g$}
+This cost functional is similar to the one encountered in Optimal Control(OC) as well as to the notion of \emph{Value} which is used in Reinforcement Learning (RL). A fundamental difference, however, is that optimising $C(\zeta)$ in our case gives an open loop plan, instead of a closed loop policy as in the case of Reinforcement Learning. 
 
-While the form of the cost functional may vary significantly depending on the application, it is very common to assign a cost function that assigns a cost to configuration pairs $c(s_i,s_j)$. The total cost $C(\zeta)$ of the path, is the sum of the individual costs along the path i.e.
+While the form of the cost functional may vary significantly depending on the application, it is very common to assign a cost function that assigns a cost to configuration pairs $c(s_i,s_j)$ \jm{``While its form may vary ..., it is common to define the cost functional as the sum of the costs between two subsequent configurations in a path''}. The total cost $C(\zeta)$ of the path, is the sum of the individual costs along the path i.e.
 \begin{equation}
 	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1})
 \end{equation}
 
 \subsection{The Inverse problem}
-The path planning problem above tackles the problem of finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\tilde{\zeta_0},\tilde{\zeta_1}...\tilde{\zeta_D})$ where $\tilde{\zeta_i}$ denotes an observed path consisting in turn of various configuration sequences. Although the cost function that generated these observations is unknown, we assume access to a parametric form of the cost, namely,
+The solution to the path planning problem above involves finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\tilde{\zeta_0},\tilde{\zeta_1}...\tilde{\zeta_D})$ where $\tilde{\zeta_i}$ denotes an observed path consisting in turn of various configuration sequences \jm{various configuration sequences? Each $\zeta_i$ should be \emph{one} sequence of configurations, no?}. Although the cost function that generated these observations is unknown, we assume access to a parametric form of the cost, namely, \jm{You don't assume access, you assume that the true cost function is of this form}
 \begin{equation}
 	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j)
 \end{equation}
-Where $\mathbf{w}$ is a K dimentional vector of unknown weights and $\mathbf{f}(s_i,s_j)$ is a feature vector of the same dimentionality. 
-Using this notation and noting that $\mathbf{w}$ is not configuration dependant, we can express the total cost of the path in a parametric form,
+Where $\mathbf{w}$ is a $K$ dimensional vector of unknown weights \jm{and what's $K$?} and $\mathbf{f}(s_i,s_j)$ is a feature vector of the same dimensionality. \jm{It's better to say: The relevant characteristics of the path between two configurations are encoded as a vector of $K$ \emph{features}, through the feature function $\mathbf{f} : C\times C\rightarrow \mathbb R^K$. For each feature there is an unknown weigth, etc.}
+Using this notation, and since $\mathbf{w}$ is not configuration-dependant, we can express the total cost of the path in a parametric form,
 
 \begin{equation}
-	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) = \mathbf{w}^T \mathbf{F}(\zeta)
+	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) := \mathbf{w}^T \mathbf{F}(\zeta)
 \end{equation}
-where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
+\jm{Added $:=$ at the end (equality by definition)} where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
 
 
 When the cost function is expressed in this form, the inverse problem reduces to finding the weight vector that assigns 
