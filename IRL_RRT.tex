@@ -96,7 +96,7 @@ This challenge has been tackled several times by researchers that seek to make I
 \subsection{The Path Planning problem}
 When planning a path, a robot considers a space $\mathcal{C}$, of possible configurations $s \in \mathcal{C}$. These configurations are usually continuous, and often represent spacial quantities such as possition and orientation as well as their derivatives. A path planner is called to plan an obstacle free path $\zeta = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $s_0$ to a goal configuration  $s_g$. There could be however several paths to the goal state so path planners usualy employ a \emph{cost functional}, $C(\zeta)$, and choose the optimal path $\zeta^*$ which satisfies,
 \begin{equation}
- 	\zeta^* = \argmin_{\zeta \in Z_{0,g}} C(\zeta)
+ 	\zeta^* = \argmin_{\zeta \in Z_{0,g}} C(\zeta) \label{back_plan}
 \end{equation}
 where $Z_{0,g}$ is the set of all possible paths from $s_0$ to $s_g$, and may be infinite.
 This cost functional is therefore similar to the one encountered in Optimal Control(OC) as well as Value which is used in Reinforcement Learning(RL). A fundamental difference however is that optimising $C(\zeta)$ in our case gives an open loop plan, instread for example a closed loop policy in the case of Reinforcement Learning. 
@@ -105,6 +105,7 @@ While the form of the cost functional may vary significantly depending on the ap
 \begin{equation}
 	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1})
 \end{equation}
+
 
 \subsection{The Inverse problem}
 The path planning problem above tackles the problem of finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\tilde{\zeta_0},\tilde{\zeta_1}...\tilde{\zeta_D})$ where $\tilde{\zeta_i}$ denotes an observed path consisting in turn of various configuration sequences. Although the cost function that generated these observations is unknown, we assume access to a parametric form of the cost, namely,
@@ -120,7 +121,26 @@ Using this notation and noting that $\mathbf{w}$ is not configuration dependant,
 where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
 
 
-When the cost function is expressed in this form, the inverse problem reduces to finding the weight vector that assigns 
+While many formulations of the inverse problem exist the general idea is that we seek a weight vector that assigns less cost to the example paths than all other possible paths at the same initial conditions and thus satisfy the constraints,
+
+\begin{equation}
+	C(\tilde{\zeta_i}) \leq C(\zeta^*) \quad \forall i
+\end{equation}
+
+
+
+A relaxation of this constraint results the minimisation of:
+
+\begin{equation}
+	\argmin_{\mathbf{w}} \sum_{i=0}^D C(\tilde{\zeta_i}) - C(\zeta^*) \label{back_minim}
+\end{equation}
+
+Note that finding $\zeta^*$ and $C(\zeta^*)$ hence  implies the minimisation procedure in \eqref{back_plan}. This in turn poses a challenge in taking derivatives with respect to \eqref{back_minim}. However as shown in \ref{ratcliffe} we can employ subgradient descent 
+to alleviate any problems. The minimisation in \label{back_minim} can therefore take place with gradient descent where the gradient is given with respect to the path feature sums.
+
+\begin{equation}
+	\nabla_{\mathbf{w}} = 
+\end{equation}
 
 \subsection{Preliminaries}
 
