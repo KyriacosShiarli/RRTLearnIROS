@@ -23,7 +23,7 @@
 %\usepackage{amssymb}  % assumes amsmath package installed
 
 \title{\LARGE \bf
-RRT-IRL whatever title we use.
+Rapidly Exploring Learning Trees.
 }
 \usepackage{mathtools}
 \usepackage{amsmath}
@@ -61,91 +61,144 @@ RRT-IRL whatever title we use.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
-Learning from Demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can save tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely Inverse Optimal Control (IOC) \cite{kalman1964linear} and Inverse Reinforcement Learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
+Learning from demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can save tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely inverse optimal control (IOC) \cite{kalman1964linear} and inverse reinforcement learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
 
 Cost functions tend to be more general and robust to changes in the environment. For example, if the friction in a minpulator's joints changes. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succint \cite{abbeel2004apprenticeship} representations of the aims of the agent. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
 
-However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov Decision Process (MDP), which are often impractical in robotics.  Firstly, they assume fully observable environments. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and  high dimensional domains. Secondly, MDPs do not allow for natural modeling of important factors such as kinodynamic constraints. 
+However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which are often impractical in robotics.  Firstly, they assume fully observable environments. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and  high dimensional domains. Secondly, MDPs do not allow for natural modeling of important factors such as kinodynamic constraints. 
 
-For these reasons, substantial research considers replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning \cite{ratliff2006maximum} uses $A^*$ search for planning, enabling application in a mobile robotics setting. The additional speed of such planners allows not only allow faster planning and learning, but also allows a robot to \emph{replan} its trajectory, removing the need to represent every possible configuration in an MDP model. 
+For these reasons, substantial research considers replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP)  \cite{ratliff2006maximum} uses $A^*$ search for planning, enabling application in a mobile robotics setting. The additional speed of such planners allows not only allow faster planning and learning, but also allows a robot to \emph{replan} its trajectory, removing the need to represent every possible configuration in an MDP model. 
 
 In path planning, Rapidly Exploring Random Trees (RRTs)\cite{lavalle1998rapidly} are appealing due to their speed in large configuration spaces and ability to elegantly handle kinodynamic constraints. RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially useful. This cost function directly affects the nature of the resulting plan and is therefore ananlogous to the cost functions  at the heart of methods such as IOC and IRL. While such a cost function is typically simple, aiming for example to find the closest path to a goal, different representations can be used to bring about more complex behaviours that are imperative, e.g., to make robots socially intelligent.
 
 In this paper, we present methods for effectively learning RRT$^*$ cost functions from demonstration. Our methods require no additional planner assumptions other than those inherent in RRT$^*$, making them particularly easy to implement. We begin by showing that the sample-based nature of RRT$^*$ requires a novel  formulation of the learning problem. We then formulate algorithms that allow these cost functions to be learned effectively. Finally, we evaluate our methods on real and simulated data from a social navigation scenario. 
 
-
-
-
-
-
-
 \section{Related Work}
 
+Since IRL's introduction there have been several attempts to apply it to robotics. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space in a grid-like form to keep computation tractable. This provides several limitations for robotics. First, the specific kinodynamic constraints of the robot cannot be satisfied by such representations. Second, and MDP is usually not used as a planner in robotics, thus many times while the learning happens in an MDP, the resulting cost function is used by a different planner during execution. 
 In this paper we replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL i.e. learning the underlying cost function to that planner using data from demonstrations.
-This challenge has been tackled several times by researchers that seek to make IRL more applicable to real world applications such as those encountered in robotics. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method developed in \cite{} was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator(LQR). Since linear dynamics are hard to come by in robotics, in \cite{levine} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to the problem, use hybrid approaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{iohc} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, while at the same time using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{graphioc}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs.
-
- % Planning, is an essential step in this process because the performance of the learner's current reward function needs to be
- % assesed so that the appropriate update on can take place. Initially, the IRL problem was introduced as an MDP and therefore the planning step involved finding the optimal policy under different objectives[cite original],[max ent]. While the concept of learning cost functions was appealing, the costly planning procedure as well as the limited modeling capacity of MDPs limited the application of these methods to robotics.       
-
-
- % While there have been many important theoretical contributions to the field some are more relevant than others for this paper. Such a contribution is that of Maximum Margin Planning, where the ideas of IRL were first directly applied to mobile robot path planning. In other work, the ideas of IRL are applied to complex continuous domains, and used along side graph based algorithms[].
-
-
-  Due to IRL's appealing properties, the robotics community was quick to adopt the concept and use it in many real world applications, with social navigation and compliance being one of the most noticable ones. A cost function that produces socially acceptable paths in different situations clearly satisfies the motivation behind Learning from Demonstration. It is very easy for us to socially navigate the environment, or even drive a robot through a crowd, but it is very hard to exactly determine the cost function we considered when eliciting that behaviour. The first application of IRL to crowd navigation can be found in \cite{henry_2010}, along with several contributions to the oribinal algorithm of Maximum Entropy Inverse Reinforcement Learning[\cite{ziebart2008maximum}. In [cite vasquez and aras] these ideas are enriched with new features as well as a software framework. Due to the complexity of the social navigation task and the aforementioned limitations of MDP's the authors employ frequent replanning as well as extensive use of parallel computation in order to achieve the task. Apart from crowd navigation, other work [cite wolfram] focusses on social compliance, extracting human intention, driving styles and route preferences. In fact most application of IRL to the real world have focused on modeling and/or replicating some aspect of human behaviour. 
+This challenge has been taken on several times by researchers that seek to make IRL more applicable to real world applications. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator(LQR). Since linear dynamics are hard to come by in robotics, in \cite{2012-cioc} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to the problem, use hybrid approaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{ratliff2009inverse} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, while at the same time using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{byravan2015graph}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs. Another more recent graph based concept is that of adaptive state graphs used in \cite{okallearning}. In this work the authors build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, one significant caveat in the method is that the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. Our work, can also be viewed as a graph, or rather tree-based approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, we will be building a controller \emph{tree} on the fly.
 
 
 \section{Background}
-\subsection{The Path Planning problem}
-When planning a path, a robot considers a space $\mathcal{C}$, of possible configurations $s \in \mathcal{C}$. \jm{remove ``the robot considers'' and rephrase. ``When planning a path, we need to consider the space $\mathcal{C}$ of possible configurations of the robot. The configurations $s \in \mathcal{C}$'' represent spacial quantities..} These configurations are usually continuous, and often represent spacial quantities such as position and orientation as well as their derivatives \jm{In Robotics literature, ``configuration space'' stands for ``valid poses while accounting for obstacles'' (see Handbook of Robotics, by B. Sicilliano, Section 5.1). So it does not include velocities. You could say that what you have is the state of the robot.}. A path planner is called to plan an obstacle free path $\zeta = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $s_0$ to a goal configuration  $s_g$ \jm{to strengthen the previous point, what you have here is a sequence of poses (path). You don't care about the velocities at those poses. A sequence of poses + velocities would be a \emph{trajectory}.}. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$, and choose the optimal path $\zeta^*$ which satisfies,
-\begin{equation}
- 	\zeta^* = \argmin_{\zeta \in Z_{0,g}} C(\zeta) \label{back_plan}
-\end{equation}
-where $Z_{0,g}$ is the set of all possible paths from $s_0$ to $s_g$, and may be infinite.\jm{Minor notation issue: you've implicitly defined $g$ to be an integer, because the subscript of a configuration is its index in a sequence. That looks weird, especially in $Z_{0,g}$. It would look better with $g\in \mathcal{C}$ as the goal, and maybe $o\in\mathcal{C}$ as the initial configuration. Then you have $Z_{o,g}$, and your path is constrained to $s_0 = o, s_{l_\zeta} = g$}
-This cost functional is similar to the one encountered in Optimal Control(OC) as well as to the notion of \emph{Value} which is used in Reinforcement Learning (RL). A fundamental difference, however, is that optimising $C(\zeta)$ in our case gives an open loop plan, instead of a closed loop policy as in the case of Reinforcement Learning. 
-
-While the form of the cost functional may vary significantly depending on the application, it is very common to assign a cost function that assigns a cost to configuration pairs $c(s_i,s_j)$ \jm{``While its form may vary ..., it is common to define the cost functional as the sum of the costs between two subsequent configurations in a path''}. The total cost $C(\zeta)$ of the path, is the sum of the individual costs along the path i.e.
+\subsection{The Path Planning Problem}
+When planning a path,  we need to consider the space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spacial quantities such as position and orientation. A path planner is called to plan an obstacle free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal configuration  $g =s_{l_{\zeta}} $ \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path i.e.
 \begin{equation}
 	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1})
 \end{equation}
-
-
-\subsection{The Inverse problem}
-The solution to the path planning problem above involves finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\tilde{\zeta_0},\tilde{\zeta_1}...\tilde{\zeta_D})$ where $\tilde{\zeta_i}$ denotes an observed path consisting in turn of various configuration sequences \jm{various configuration sequences? Each $\zeta_i$ should be \emph{one} sequence of configurations, no?}. Although the cost function that generated these observations is unknown, we assume access to a parametric form of the cost, namely, \jm{You don't assume access, you assume that the true cost function is of this form}
+The cost functional is similar to the one encountered in optimal control as well as to the notion of value which is used in reinforcement learning. 
+Using the cost functional the path planner needs to choose the optimal path $\zeta^*$ which satisfies,
 \begin{equation}
-	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j)
+ 	\zeta^*_{o,g} = \argmin_{\zeta_{o,g} \in Z_{o,g}} C(\zeta) \label{eq:back_plan}
 \end{equation}
-Where $\mathbf{w}$ is a $K$ dimensional vector of unknown weights \jm{and what's $K$?} and $\mathbf{f}(s_i,s_j)$ is a feature vector of the same dimensionality. \jm{It's better to say: The relevant characteristics of the path between two configurations are encoded as a vector of $K$ \emph{features}, through the feature function $\mathbf{f} : C\times C\rightarrow \mathbb R^K$. For each feature there is an unknown weigth, etc.}
+where $Z_{o,g}$ is the set of all possible paths that satisfy $s_0 = o, s_{l_\zeta} = g$, and may be infinite.
+
+Path planning is a well studied problem in robotics with many proposed solutions. One approach is to discretise $\mathcal{S}$ and use popular graph search algorithms, such as $A^*$ search to find the optimal path. Under very mild assumptions this approach is quarantied to find the best path, but suffers from scalability problems as the size of $\mathcal{S}$ increases. Furthermore such methods do not take into account kinodynamic constraints that a robot might have i.e. they assume that every configuration on the graph is acessible from a neighbouring one. The drawbacks of $A^*$ and its variants provide motivations for so called \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then search it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result this tree can be grown in a way that respects the kinodynamic constraints of the robot. Furthermore its randomised nature allows it to find reasonable paths quickly in large configuration spaces. The main drawback of RRT$^*$ is that many times the optimality of the resulting path is compromised.
+
+\subsection{The Inverse Problem}
+The solution to the path planning problem above involves finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\zeta^1_{o_1,g_1},\zeta^2_{o_2,g_2}...\zeta^D_{o_D,g_D})$ where $\zeta^i_{o_i,g_i}$ denotes an observed path with initial and final configurations $o_i,g_i$ respectively. Although the cost function that generated these observations is unknown, we assume that it is of the form.
+\begin{equation}
+	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j) \label{eq:inner_prod}
+\end{equation}
+Where $\mathbf{f}(s_i,s_j)$ is a $K$ dimensional vector of fetures that encode different aspects of the configuration pair and $\mathbf{w}$ is a vector of unknown weights to be learned.
 Using this notation, and since $\mathbf{w}$ is not configuration-dependant, we can express the total cost of the path in a parametric form,
 
 \begin{equation}
 	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) := \mathbf{w}^T \mathbf{F}(\zeta)
 \end{equation}
-\jm{Added $:=$ at the end (equality by definition)} where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
-
+where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
 
 While many formulations of the inverse problem exist the general idea is that we seek a weight vector that assigns less cost to the example paths than all other possible paths at the same initial conditions and thus satisfy the constraints,
 
 \begin{equation}
-	C(\tilde{\zeta_i}) \leq C(\zeta^*) \quad \forall i
+	C(\zeta^i_{o_i,g_i}) \leq C(\zeta^*_{o_i,g_i}) \quad \forall i
 \end{equation}
-
 
 
 A relaxation of this constraint results the minimisation of:
 
 \begin{equation}
-	\argmin_{\mathbf{w}} \sum_{i=0}^D C(\tilde{\zeta_i}) - C(\zeta^*) \label{back_minim}
+	\argmin_{\mathbf{w}} \sum_{i=0}^D C(\zeta^i_{o_i,g_i}) - C(\zeta^*_{o_i,g_i}) \label{eq:back_minim}
 \end{equation}
 
-Note that finding $\zeta^*$ and $C(\zeta^*)$ hence  implies the minimisation procedure in \eqref{back_plan}. This in turn poses a challenge in taking derivatives with respect to \eqref{back_minim}. However as shown in \ref{ratcliffe} we can employ subgradient descent 
-to alleviate any problems. The minimisation in \label{back_minim} can therefore take place with gradient descent where the gradient is given with respect to the path feature sums.
+Note that finding $\zeta^*_{o_i,g_i}$ and subsequently $C(\zeta^*_{o_i,g_i})$ implies the minimisation procedure in Equation \eqref{eq:back_plan}. This in turn poses a challenge in minimising \eqref{eq:back_minim}. However as shown in \cite{ratliff2006maximum} we can employ subgradient descent resulting in an update of the form,
 
 \begin{equation}
-	\nabla_{\mathbf{w}} = 
+	\nabla_{\mathbf{w}} =\frac{1}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\zeta^*_{o_i,g_i})
 \end{equation}
 
-\subsection{Preliminaries}
+The inverse problem can therefore be seen as an iterative procedure, that first solves the planning problem in the inner loop, and based on that solution updates the weights in an appropriate manner in the outer loop. The weights at convergence represent the cost function that is used to plan the future behaviour of the agent. In \cite{ratliff2006maximum} the A$^*$ was used as a planning procedure for the inner loop assuming that the domain contained acyclic positive costs, in this paper we will make the same assumption and develop methods that use an RRT$^*$ as a base planner. 
 
+\section{Methods}
+	\subsection{Feature Sums and Sampled Based Planners}
+		Feature sums, $F(\zeta)$, can be seen as the  `fingerprints' of paths, and their definition is of crucial importance in the inverse problem. When planning on a fixed graph, like in the case of MDPs or A$^*$ search, it is easy to define the feature sums as the \emph{edge} costs on the graph. Furthermore if planning in continous domains we may consider integrals along the path. In RRT's however the tree that is being built has neither a fixed structure, nor an analytical form. Thus, the first step towards learning RRT$^*$ cost functions from demonstration is to come up with a reasonable approximation of $F(\zeta)$ for a path. This approximation must be consistent with the definition of the cost for a configuration pair. One such definition for cost is as follows.
+		\begin{equation}
+			c(s_i,s_j) = \frac{c(s_i)+c(s_j)}{2}d_{s_i,s_j}
+		\end{equation}
+		Where $c(s_i)$ is a cost function defined over a single configuration and $d_{s_i,s_j}$ is a measure of distance between the two configurations. For example, if we consider configurations to be points in Eucledian space then $d_{s_i,s_j}$ can be the eucledian distance. Noting that the costs and features are related by \eqref{eq:inner_prod} for a single feature $f_k$ we have,
+
+		\begin{equation}
+			f_k(s_i,s_j) = \frac{f(s_i)+f(s_j)}{2}d_{s_i,s_j}
+		\end{equation}
+		Following this definition feature sum calculation along a candidate path is trivial,
+		\begin{equation}
+			F(\zeta) = \sum_{i=0}^{\zeta_l-1} \frac{\mathbf{f}(s_i)+\mathbf{f}(s_{i+1})}{2}d_{s_i,s_{i+1}}
+		\end{equation}
+
+
+	\subsection{Suboptimality of RRT$^*$}
+		A major difference between RRT$^*$ and a deterministic planner such as A$^*$ lies in optimality. In terms of the notation we have introduced, A$^*$ is capable of achieving the minimisation of \eqref{eq:back_plan}. RRT$^*$ on the other hand, for a given time budget T is capable of sampling a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$. The maximisation in \eqref{eq:back_plan} can then be performed over that subset. Furthermore this subset will contain $\zeta^*$ with probability 1 as $T \rightarrow \infty$, i.e the algorithm is asymptotically optimal \cite{karaman2011sampling}. Planning with this budget T is key to our contribution, precisely because our methods would be appropriate in cases where this budget is low when compared to the time required to solve the planning problem using traditional deterministic search algorithms. 
+
+	\subsection{Approximate Maximum Margin Planning for RRT$^*$}
+		Describe max margin here
+
+	\subsection{Cost Correlation Similarity}
+		Describe CSC here
+
+	\section{Future}
+		\subsection{Status}
+		\begin{itemize}
+			\item RRT for x,y configurations done. Adding orientation should be trivial.
+			\item New simulator almost done. I am using Gazebo which also simulates physics, but I have been havign a lot of problems with the local planner (DWA). Maybe these will be fixed if I add orientation to the planner. I am thinking of incorporating a different local planner such as elastic bands. It seems to be better of my purposes.
+			\item I can begin to collect data and even to learning, but I am not yet able to execute that plan reliably in control space (v,w).
+		\end{itemize}
+		\subsection{Plan}
+		\begin{itemize}
+			\item Finish Simulator by the end of the March. 
+			\item Run a first comparison of A* and RRT* using max margin planning and cost-correlation similarity, by mid April. This will be done for the static human obstacle case. I.e. we will not be executing the plan.
+			\item Implement a new idea I have and have a full set of results for all methods to be used by the end of April. Make a new assesment in terms of motivation and baselines.
+			\item May: AAMAS poster, AAMAS, deliverable. 
+			\item June: Collect data on static scenario and the real robot. Perform learning. Put it back on the robot.
+			\item July: Atempt the dynamic cases. Find the best way to to do this. Perhaps consider a semi dynamic case.
+			\item August: Finalise results and do the writeup, which I will also be doing in parallel.
+		\end{itemize}
+
+		\subsection{Concerns}
+		\begin{itemize}
+			\item It could be very hard to incorporate the dynamic cases. I need to perfect the local planner which I dont have now. From what I have seen in related work, other researchers simply plan on a `snapshot' of a dynamic case and simply demonstrate that path. I general, evaluation for such work is a bit strange.
+			\item I can find no comparison between RRT* and A*. So I wonder how I should compare them. 
+			People dont tend to use A* as a baseline for RRT* speed or path quality.
+			\item I would really like to try this method on perhaps another dataset. But I cant figure ou what.
+		\end{itemize}
+
+	\section{Reasongs for IROS Failure}
+		\subsection{Absense of a proper baseline}
+			For the proposed scenarios (dataset), my baseline which is basically the objective in equation \eqref{eq:back_minim} was performing just as good as the maximum margin method.
+
+			\textbf{Solution 1:} Use A* as a baseline. This seems like a natural baseline since existing IRL methods can be applied trivially to A*. These is also a max margin formulation for it. A* provides optimal planning and I wouldnít really expect it to do worse than RRT* that is sub optimal. If we can however show that our algorithms can perform close to A* and can therefore be used whenever A* is not capable of performing well, i.e when the problem is high dimensional, or when there is a time budget for finding a solution.\\
+
+			\textbf{Solution 2:} Come up with a harder scenario and beat the predefined baseline i.e. Max Margin vs No margin.\\
+
+			\textbf{Solution 3:} Come up with a harder scenario and beat the predefined baseline and add Cost Correlation Similarity method. Hoping that it will be better than all of them.\\
+
+			\textbf{Solution 4:} Try to beat a continuous trajectory optimisation method from this paper: http://graphics.stanford.edu/projects/cioc/cioc.pdf. I think that this is a strong baseline. It would show the applicability of our method in high dimentional control domains, if it succeeds. It would require lots of work in matlab to code the RRT and incorporate it in the examples. It would also require a slightly different definition for the RRT.
+
+		\subsection{The dataset was trivial}
+			For the proposed dataset there were a lot of cost functions that would peform reasonably. There was not really a difference in their performance on the 2 evaluation measures (path cost on ground truth cost function and similarity.). This was true both of the dataset collected from human demonstrations and the one collected using RRTs from a ground truth cost function.
+
+				\textbf{Solution 1:} A more complicated navigation task? Perhaps even increasing the size of the room will help.\\
+
+				\textbf{Solution 2:} Find some kind of simulated manipulation environment. The paper I mentioned before has a simple manipulation coded in matlab. Manipulators pose very big problems for A$^*$ because of the dimentionality and the kinodynamic constraints and they also pose a problem for trajectory optimisation methods because they are highly non-convex.
 
 % Sampling based path planning algortihms such as Probabilistic Roadmaps(PRM) \cite{kavraki1996probabilistic} and Rapidly-Exploring-Random Trees(RRT)\cite{lavalle1998rapidly} have seen increasing popularity in various robotic planning applications, due to their ability to handle high dimentional continouous configuration spaces reliably and in reasonable time. In contrast to other planning and search algortihms such as A$^*$ and $D^*$, these algortihms do not require the specification of an admisible heuristic while sacrificing optimality for speed and state space coverage. While many interesting variants of the RRT have been invented such as the transition based RRT (T-RRT) \cite{jaillet2008transition}, by far the most significant contribution is that of the RRT$^*$ algorithm \cite{karaman2011sampling} where the original algorithm is extended to incorporate cost functions, based upon which an optimal path is guaranteed given an infinite amount of samples. These cost functions in essence determine the plan and as a result the behaviour of the robot in different situations, rendering their definition extremely important for roboticists.
 % At times, rather than defining (and tuning) a cost function for a robot (or any other controled system) it is easier to demonstrate the desired plan or behaviour, and use algorithms to uncover the cost function that will bring about this behaviour. Examples of such methods lie in the fields of Inverse optimal control (IOC) and Inverse Reinforcement Learning (IRL)\cite{abbeel2004apprenticeship}, which due to their aforementioned property have been subject to increasing attention as well as success. A arguement for learning cost functions,
@@ -161,142 +214,6 @@ to alleviate any problems. The minimisation in \label{back_minim} can therefore 
 % Complex mobile robotics tasks, such as navigation are typically not modelled as control problems because of their computational complexity. Furthermore, modelling path planning as a Markov Decision Process (MDP) is usually avoided also due to its computational cost, with the exception of the case where this MDP is deterministic, which yields the same open loop policy as A$^*$. Therefore, even if our world was deterministic we would still be limited by the drawacks of A$^*$ planning from which probabilistic methods dont.\\
 
 % It should be apparent that an algortihm that uses RRT$^*$ to learn as well as plan, would be of great value to roboticists seeking to incorporate human demonstrations into the design of their robots.
-
-\section{PROCEDURE FOR PAPER SUBMISSION}
-
-\subsection{Selecting a Template (Heading 2)}
-
-First, confirm that you have the correct template for your paper size. This template has been tailored for output on the US-letter paper size. 
-It may be used for A4 paper size if the paper size setting is suitably modified.
-
-\subsection{Maintaining the Integrity of the Specifications}
-
-The template is used to format your paper and style the text. All margins, column widths, line spaces, and text fonts are prescribed; please do not alter them. You may note peculiarities. For example, the head margin in this template measures proportionately more than is customary. This measurement and others are deliberate, using specifications that anticipate your paper as one part of the entire proceedings, and not as an independent document. Please do not revise any of the current designations
-
-\section{MATH}
-
-Before you begin to format your paper, first write and save the content as a separate text file. Keep your text and graphic files separate until after the text has been formatted and styled. Do not use hard tabs, and limit use of hard returns to only one return at the end of a paragraph. Do not add any kind of pagination anywhere in the paper. Do not number text heads-the template will do that for you.
-
-Finally, complete content and organizational editing before formatting. Please take note of the following items when proofreading spelling and grammar:
-
-\subsection{Abbreviations and Acronyms} Define abbreviations and acronyms the first time they are used in the text, even after they have been defined in the abstract. Abbreviations such as IEEE, SI, MKS, CGS, sc, dc, and rms do not have to be defined. Do not use abbreviations in the title or heads unless they are unavoidable.
-
-\subsection{Units}
-
-\begin{itemize}
-
-\item Use either SI (MKS) or CGS as primary units. (SI units are encouraged.) English units may be used as secondary units (in parentheses). An exception would be the use of English units as identifiers in trade, such as “3.5-inch disk drive”.
-\item Avoid combining SI and CGS units, such as current in amperes and magnetic field in oersteds. This often leads to confusion because equations do not balance dimensionally. If you must use mixed units, clearly state the units for each quantity that you use in an equation.
-\item Do not mix complete spellings and abbreviations of units: “Wb/m2” or “webers per square meter”, not “webers/m2”.  Spell out units when they appear in text: “. . . a few henries”, not “. . . a few H”.
-\item Use a zero before decimal points: “0.25”, not “.25”. Use “cm3”, not “cc”. (bullet list)
-
-\end{itemize}
-
-
-\subsection{Equations}
-
-The equations are an exception to the prescribed specifications of this template. You will need to determine whether or not your equation should be typed using either the Times New Roman or the Symbol font (please no other font). To create multileveled equations, it may be necessary to treat the equation as a graphic and insert it into the text after your paper is styled. Number equations consecutively. Equation numbers, within parentheses, are to position flush right, as in (1), using a right tab stop. To make your equations more compact, you may use the solidus ( / ), the exp function, or appropriate exponents. Italicize Roman symbols for quantities and variables, but not Greek symbols. Use a long dash rather than a hyphen for a minus sign. Punctuate equations with commas or periods when they are part of a sentence, as in
-
-$$
-\alpha + \beta = \chi \eqno{(1)}
-$$
-
-Note that the equation is centered using a center tab stop. Be sure that the symbols in your equation have been defined before or immediately following the equation. Use “(1)”, not “Eq. (1)” or “equation (1)”, except at the beginning of a sentence: “Equation (1) is . . .”
-
-\subsection{Some Common Mistakes}
-\begin{itemize}
-
-
-\item The word “data” is plural, not singular.
-\item The subscript for the permeability of vacuum ?0, and other common scientific constants, is zero with subscript formatting, not a lowercase letter “o”.
-\item In American English, commas, semi-/colons, periods, question and exclamation marks are located within quotation marks only when a complete thought or name is cited, such as a title or full quotation. When quotation marks are used, instead of a bold or italic typeface, to highlight a word or phrase, punctuation should appear outside of the quotation marks. A parenthetical phrase or statement at the end of a sentence is punctuated outside of the closing parenthesis (like this). (A parenthetical sentence is punctuated within the parentheses.)
-\item A graph within a graph is an “inset”, not an “insert”. The word alternatively is preferred to the word “alternately” (unless you really mean something that alternates).
-\item Do not use the word “essentially” to mean “approximately” or “effectively”.
-\item In your paper title, if the words “that uses” can accurately replace the word “using”, capitalize the “u”; if not, keep using lower-cased.
-\item Be aware of the different meanings of the homophones “affect” and “effect”, “complement” and “compliment”, “discreet” and “discrete”, “principal” and “principle”.
-\item Do not confuse “imply” and “infer”.
-\item The prefix “non” is not a word; it should be joined to the word it modifies, usually without a hyphen.
-\item There is no period after the “et” in the Latin abbreviation “et al.”.
-\item The abbreviation “i.e.” means “that is”, and the abbreviation “e.g.” means “for example”.
-
-\end{itemize}
-
-
-\section{USING THE TEMPLATE}
-
-Use this sample document as your LaTeX source file to create your document. Save this file as {\bf root.tex}. You have to make sure to use the cls file that came with this distribution. If you use a different style file, you cannot expect to get required margins. Note also that when you are creating your out PDF file, the source file is only part of the equation. {\it Your \TeX\ $\rightarrow$ PDF filter determines the output file size. Even if you make all the specifications to output a letter file in the source - if your filter is set to produce A4, you will only get A4 output. }
-
-It is impossible to account for all possible situation, one would encounter using \TeX. If you are using multiple \TeX\ files you must make sure that the rsion tool.
-
-\subsection{Headings, etc}
-
-Text heads organize the topics on a relational, hierarchical basis. For example, the paper title is the primary text head because all subsequent material relates and elaborates on this one topic. If there are two or more sub-topics, the next level head (uppercase Roman numerals) should be used and, conversely, if there are not at least two sub-topics, then no subheads should be introduced. Styles named “Heading 1”, “Heading 2”, “Heading 3”, and “Heading 4” are prescribed.
-
-\subsection{Figures and Tables}
-
-Positioning Figures and Tables: Place figures and tables at the top and bottom of columns. Avoid placing them in the middle of columns. Large figures and tables may span across both columns. Figure captions should be below the figures; table heads should appear above the tables. Insert figures and tables after they are cited in the text. Use the abbreviation “Fig. 1”, even at the beginning of a sentence.
-
-\begin{table}[h]
-\caption{An Example of a Table}
-\label{table_example}
-\begin{center}
-\begin{tabular}{|c||c|}
-\hline
-One & Two\\
-\hline
-Three & Four\\
-\hline
-\end{tabular}
-\end{center}
-\end{table}
-
-
-   \begin{figure}[thpb]
-      \centering
-      \framebox{\parbox{3in}{We suggest that you use a text box to insert a graphic (which is ideally a 300 dpi TIFF or EPS file, with all fonts embedded) because, in an document, this method is somewhat more stable than directly inserting a picture.
-}}
-      %\includegraphics[scale=1.0]{figurefile}
-      \caption{Inductance of oscillation winding on amorphous
-       magnetic core versus DC bias magnetic field}
-      \label{figurelabel}
-   \end{figure}
-   
-
-Figure Labels: Use 8 point Times New Roman for Figure labels. Use words rather than symbols or abbreviations when writing Figure axis labels to avoid confusing the reader. As an example, write the quantity “Magnetization”, or “Magnetization, M”, not just “M”. If including units in the label, present them within parentheses. Do not label axes only with units. In the example, write “Magnetization (A/m)” or “Magnetization {A[m(1)]}”, not just “A/m”. Do not label axes with a ratio of quantities and units. For example, write “Temperature (K)”, not “Temperature/K.”
-
-\section{CONCLUSIONS}
-
-A conclusion section is not required. Although a conclusion may review the main points of the paper, do not replicate the abstract as the conclusion. A conclusion might elaborate on the importance of the work or suggest applications and extensions. 
-
-\addtolength{\textheight}{-12cm}   % This command serves to balance the column lengths
-                                  % on the last page of the document manually. It shortens
-                                  % the textheight of the last page by a suitable amount.
-                                  % This command does not take effect until the next page
-                                  % so it should come on the page before the last. Make
-                                  % sure that you do not shorten the textheight too much.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{APPENDIX}
-
-Appendixes should appear before the acknowledgment.
-
-\section*{ACKNOWLEDGMENT}
-
-The preferred spelling of the word “acknowledgment” in America is without an “e” after the “g”. Avoid the stilted expression, “One of us (R. B. G.) thanks . . .”  Instead, try “R. B. G. thanks”. Put sponsor acknowledgments in the unnumbered footnote on the first page.
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-References are important to the reader; therefore, each citation must be complete and correct. If at all possible, references should be commonly available publications.
 
 
 \bibliographystyle{IEEEtran}
