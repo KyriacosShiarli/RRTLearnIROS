@@ -67,7 +67,7 @@ Cost functions tend to be more general and robust to changes in the environment.
 
 However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which are often impractical in robotics.  Firstly, they assume fully observable environments. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and  high dimensional domains. Secondly, MDPs do not allow for natural modeling of important factors such as kinodynamic constraints. 
 
-For these reasons, substantial research considers replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP)  \cite{ratliff2006maximum} uses $A^*$ search for planning, enabling application in a mobile robotics setting. The additional speed of such planners allows not only allow faster planning and learning, but also allows a robot to \emph{replan} its trajectory, removing the need to represent every possible configuration in an MDP model. 
+For these reasons, substantial research considers replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP)  \cite{ratliff2006maximum} uses $A^*$ search for planning. This removes the necessity to do all the planning in advance as it usually happens when solving an MDP. It further removes the need to model all aspects of the environment since the robot can quicly replan its trajectory to account for uncertainty. 
 
 In path planning, Rapidly Exploring Random Trees (RRTs)\cite{lavalle1998rapidly} are appealing due to their speed in large configuration spaces and ability to elegantly handle kinodynamic constraints. RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially useful. This cost function directly affects the nature of the resulting plan and is therefore ananlogous to the cost functions  at the heart of methods such as IOC and IRL. While such a cost function is typically simple, aiming for example to find the closest path to a goal, different representations can be used to bring about more complex behaviours that are imperative, e.g., to make robots socially intelligent.
 
@@ -76,58 +76,73 @@ In this paper, we present methods for effectively learning RRT$^*$ cost function
 \section{Related Work}
 
 Since IRL's introduction there have been several attempts to apply it to robotics. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space in a grid-like form to keep computation tractable. This provides several limitations for robotics. First, the specific kinodynamic constraints of the robot cannot be satisfied by such representations. Second, and MDP is usually not used as a planner in robotics, thus many times while the learning happens in an MDP, the resulting cost function is used by a different planner during execution. 
-In this paper we replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL i.e. learning the underlying cost function to that planner using data from demonstrations.
-This challenge has been taken on several times by researchers that seek to make IRL more applicable to real world applications. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator(LQR). Since linear dynamics are hard to come by in robotics, in \cite{2012-cioc} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to the problem, use hybrid approaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{ratliff2009inverse} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, while at the same time using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{byravan2015graph}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs. Another more recent graph based concept is that of adaptive state graphs used in \cite{okallearning}. In this work the authors build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, one significant caveat in the method is that the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. Our work, can also be viewed as a graph, or rather tree-based approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, we will be building a controller \emph{tree} on the fly.
+In this paper we replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL, i.e., learning the underlying cost function to that planner using data from demonstrations.
+This challenge has been taken on several times by researchers that seek to make IRL more applicable to real world applications. In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator. Since linear dynamics are hard to come by in robotics, in \cite{2012-cioc} local linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. Other approaches to the problem, use hybrid approaches to planning. In Inverse Optimal Heuristic Control (IOHC) for example \cite{ratliff2009inverse} the authors model the long term goals of the agent as a coarse state MDP ensuring its tractability, while at the same time using supervised learning to determine the local policy of the agent at each state. Another example of a hybrid technique is that of Graph-Based IOC \cite{byravan2015graph}. In this work the authors define discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs. Another more recent graph based concept is that of adaptive state graphs used in \cite{okallearning}. In this work the authors build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, one significant caveat in the method is that the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. Our work, can also be viewed as a graph, or rather tree-based approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, we will be building a controller \emph{tree} on the fly.
 
 
 \section{Background}
+In this section we briefly revisit the two main problems that this paper is concerned with. The path planning problem, which seeks to find an optimal path given a cost function and the inverse problem, that seeks to find a cost function, given optimal paths.
 \subsection{The Path Planning Problem}
-When planning a path,  we need to consider the space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spacial quantities such as position and orientation. A path planner is called to plan an obstacle free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal configuration  $g =s_{l_{\zeta}} $ \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path i.e.
+When planning a path,  we need to consider the space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spacial quantities such as position and orientation. A path planner is called to plan an obstacle free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}configuration  $g =s_{l_{\zeta}} $. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path, i.e.,
 \begin{equation}
-	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1})
+	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1}),
 \end{equation}
 The cost functional is similar to the one encountered in optimal control as well as to the notion of value which is used in reinforcement learning. 
 Using the cost functional the path planner needs to choose the optimal path $\zeta^*$ which satisfies,
 \begin{equation}
- 	\zeta^*_{o,g} = \argmin_{\zeta_{o,g} \in Z_{o,g}} C(\zeta) \label{eq:back_plan}
+ 	\zeta^*_{o,g} = \argmin_{\zeta_{o,g} \in Z_{o,g}} C(\zeta), \label{eq:back_plan}
 \end{equation}
-where $Z_{o,g}$ is the set of all possible paths that satisfy $s_0 = o, s_{l_\zeta} = g$, and may be infinite.
+where $Z_{o,g}$ is the set of all possible paths that are available to the planner and satisfy $s_0 = o, s_{l_\zeta} = g$.
 
-Path planning is a well studied problem in robotics with many proposed solutions. One approach is to discretise $\mathcal{S}$ and use popular graph search algorithms, such as $A^*$ search to find the optimal path. Under very mild assumptions this approach is quarantied to find the best path, but suffers from scalability problems as the size of $\mathcal{S}$ increases. Furthermore such methods do not take into account kinodynamic constraints that a robot might have i.e. they assume that every configuration on the graph is acessible from a neighbouring one. The drawbacks of $A^*$ and its variants provide motivations for so called \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then search it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result this tree can be grown in a way that respects the kinodynamic constraints of the robot. Furthermore its randomised nature allows it to find reasonable paths quickly in large configuration spaces. The main drawback of RRT$^*$ is that many times the optimality of the resulting path is compromised.
+Path planning is a well studied problem in robotics with many proposed solutions. One approach is to discretise $\mathcal{S}$ and use popular graph search algorithms, such as $A^*$ search to find the optimal path. Under very mild assumptions this approach is quarantied to find the best path, but suffers from scalability problems as the size of $\mathcal{S}$ increases. Furthermore such methods do not take into account kinodynamic constraints that a robot might have, i.e., they assume that every configuration on the graph is acessible from a neighbouring one. The drawbacks of $A^*$ and its variants provide motivations for so called \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then search it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result this tree can be grown in a way that respects the kinodynamic constraints of the robot. Furthermore its randomised nature allows it to find reasonable paths quickly in large configuration spaces. The main drawback of RRT$^*$ is that many times the optimality of the resulting path is compromised.
 
 \subsection{The Inverse Problem}
-The solution to the path planning problem above involves finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e. given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\zeta^1_{o_1,g_1},\zeta^2_{o_2,g_2}...\zeta^D_{o_D,g_D})$ where $\zeta^i_{o_i,g_i}$ denotes an observed path with initial and final configurations $o_i,g_i$ respectively. Although the cost function that generated these observations is unknown, we assume that it is of the form.
+The solution to the path planning problem above involves finding an optimal (or near optimal) path to the goal given a cost function. In this paper we are concerned with the inverse problem, i.e., given example paths, find the cost function that will result in these paths being optimal (or near optimal). These example paths come in the form of a dataset $\mathcal{D} = (\zeta^1_{o_1,g_1},\zeta^2_{o_2,g_2}...\zeta^D_{o_D,g_D})$ where $\zeta^i_{o_i,g_i}$ denotes an observed path with initial and final configurations $o_i,g_i$ respectively. Although the cost function that generated these observations is unknown, we assume that it is of the form,
 \begin{equation}
-	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j) \label{eq:inner_prod}
+	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j). \label{eq:inner_prod}
 \end{equation}
 Where $\mathbf{f}(s_i,s_j)$ is a $K$ dimensional vector of fetures that encode different aspects of the configuration pair and $\mathbf{w}$ is a vector of unknown weights to be learned.
 Using this notation, and since $\mathbf{w}$ is not configuration-dependant, we can express the total cost of the path in a parametric form,
 
 \begin{equation}
-	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) := \mathbf{w}^T \mathbf{F}(\zeta)
+	C(\zeta) = \mathbf{w}^T\sum_{i=0}^{l_{\zeta}-1} \mathbf{f}(s_i,s_{i+1}) := \mathbf{w}^T \mathbf{F}(\zeta),
 \end{equation}
 where $\mathbf{F}(\zeta)$ is the \emph{feature sum} of the path.
 
-While many formulations of the inverse problem exist the general idea is that we seek a weight vector that assigns less cost to the example paths than all other possible paths at the same initial conditions and thus satisfy the constraints,
+While many formulations of the inverse problem exist the general idea is that we seek a weight vector that assigns less cost to the example paths than all other possible paths at the same initial conditions and thus satisfy the constraints which is in turn equivalent to:
 
 \begin{equation}
-	C(\zeta^i_{o_i,g_i}) \leq C(\zeta^*_{o_i,g_i}) \quad \forall i
+	C(\zeta^i_{o_i,g_i}) \leq \min_{\zeta_{o,g} \in Z_{o,g}} C(\zeta) \quad \forall i.
 \end{equation}
 
-
-A relaxation of this constraint results the minimisation of:
+In \cite{ratliff2006maximum} Ratliff et al. propose a maximum margin definition of the above constraint, by introducing a loss functions $L_i(\zeta)$ that induces a cost whenever the proposed path $\zeta$ is similar to the example path $\zeta^i_{o_i,g_i}$. The full optimisation formulation of Maximum Margin Planning is as follows.
 
 \begin{equation}
-	\argmin_{\mathbf{w}} \sum_{i=0}^D C(\zeta^i_{o_i,g_i}) - C(\zeta^*_{o_i,g_i}) \label{eq:back_minim}
+	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \gamma \sum_i \tau_i
+\end{equation}
+\begin{equation}
+	s.t \quad C(\zeta^i_{o_i,g_i}) - \tau_i \leq \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta) \quad \forall i,
 \end{equation}
 
-Note that finding $\zeta^*_{o_i,g_i}$ and subsequently $C(\zeta^*_{o_i,g_i})$ implies the minimisation procedure in Equation \eqref{eq:back_plan}. This in turn poses a challenge in minimising \eqref{eq:back_minim}. However as shown in \cite{ratliff2006maximum} we can employ subgradient descent resulting in an update of the form,
+where $\tau_i$ are slacks that can be used to relax the constraints. It is also demonstrated that due to tightness in these slacks we arrive at the unconstrained problem:
 
 \begin{equation}
-	\nabla_{\mathbf{w}} =\frac{1}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\zeta^*_{o_i,g_i})
+	\argmin_{\mathbf{w}} \frac{1}{2}||\mathbf{w}||^2 + \gamma \sum_i C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big).
 \end{equation}
 
-The inverse problem can therefore be seen as an iterative procedure, that first solves the planning problem in the inner loop, and based on that solution updates the weights in an appropriate manner in the outer loop. The weights at convergence represent the cost function that is used to plan the future behaviour of the agent. In \cite{ratliff2006maximum} the A$^*$ was used as a planning procedure for the inner loop assuming that the domain contained acyclic positive costs, in this paper we will make the same assumption and develop methods that use an RRT$^*$ as a base planner. 
+The minimum can be found by computing a subgradient and performing gradient descent on the above objective.
+
+\begin{equation}
+	\nabla_{\mathbf{w}} =\frac{1}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\tilde{\zeta}^*_{o_i,g_i}).
+\end{equation}
+
+Where,
+
+\begin{equation}
+	\tilde{\zeta}^*_{o_i,g_i} = \argmin_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta).
+\end{equation}
+
+The inverse problem can therefore be seen as an iterative procedure, that first solves the planning problem in the inner loop while keeping the weights constant. Based on that solution updates the weights in an appropriate manner in the outer loop. The weights at convergence represent the cost function that is used to plan the future behaviour of the agent. In \cite{ratliff2006maximum} A$^*$ search was used as a planning procedure for the inner loop assuming that the domain contained acyclic positive costs. In this paper we will make the same assumption and develop methods that use an RRT$^*$ as a base planner. 
 
 \section{Methods}
 	\subsection{Feature Sums and Sampled Based Planners}
