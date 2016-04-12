@@ -42,6 +42,9 @@ Rapidly Exploring Learning Trees.
 }
 \newcommand{\jm}[1]{\textcolor{blue}{Joao: #1}}
 
+\newcommand{\sw}[1]{\textcolor{red}{SW: #1}}
+
+
 \begin{document}
 
 
@@ -61,9 +64,11 @@ Rapidly Exploring Learning Trees.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 
-Learning from demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can save tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely inverse optimal control (IOC) \cite{kalman1964linear} and inverse reinforcement learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
+\sw{Add author affiliations.}
 
-Cost functions tend to be more general and robust to changes in the environment. For example, if the friction in a manipulator's joints changes. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succint \cite{abbeel2004apprenticeship} representations of the aims of the agent. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
+Learning from demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can avoid the need for tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely inverse optimal control (IOC) \cite{kalman1964linear} and inverse reinforcement learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
+
+Cost functions tend to be more general and robust to changes in the environment. For example, if the friction in a manipulator's joints changes. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succint representations of the aims of the agent \cite{abbeel2004apprenticeship}. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
 
 However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which are often impractical in robotics.  Firstly, they assume fully observable environments. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and  high dimensional domains. Finally, the lack of scalability of MDPs along with the Markovian asumption prohibit the natural modeling of important factors such as kinodynamic constraints. 
 
