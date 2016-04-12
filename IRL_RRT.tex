@@ -99,16 +99,17 @@ Our work, can also be viewed as a graph, or rather tree-based approach. Instead 
 We begin with background on path planning and inverse reinforcement learning for path planning.
 
 \subsection{Path Planning}
-Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}configuration  $g =s_{l_{\zeta}} $. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path, i.e.,
+Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$ \sw{isn't the length $l_{\zeta}+1$?}, from an initial configuration $o = s_0$ to a goal configuration  $g =s_{l_{\zeta}}$. Whn the initial and goal configurations are implied, we refer to a path as simply $\zeta$.
+
+Because there could be several paths to the goal, path planners typially employ a \emph{cost functional}, $C(\zeta)$ often defined as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$ is therefore the sum of the individual costs along the path, i.e.,
 \begin{equation}
-	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1}),
+	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1}).
 \end{equation}
-The cost functional is similar to the one encountered in optimal control as well as to the notion of value which is used in reinforcement learning. 
-Using the cost functional the path planner needs to choose the optimal path $\zeta^*$ which satisfies,
+This cost functional is similar to the one encountered in optimal control as well as to value functions used in reinforcement learning. Given the cost functional, the path planner seeks an optimal path $\zeta^*$, which satisfies,
 \begin{equation}
  	\zeta^*_{o,g} = \argmin_{\zeta_{o,g} \in Z_{o,g}} C(\zeta), \label{eq:back_plan}
 \end{equation}
-where $Z_{o,g}$ is the set of all possible paths that are available to the planner and satisfy $s_0 = o, s_{l_\zeta} = g$.
+where $Z_{o,g}$ is the set of all paths such that $s_0 = o, s_{l_\zeta} = g$.
 
 Path planning is a well studied problem in robotics with many proposed solutions. One approach is to discretise $\mathcal{S}$ and use popular graph search algorithms, such as $A^*$ search to find the optimal path. Under very mild assumptions this approach is quarantied to find the best path on the graph -but not in $\mathcal{S}$-, but suffers from scalability problems as the size of $\mathcal{S}$ increases, e.g., as the discretisation becomes finer. Furthermore such methods do not take into account kinodynamic constraints that a robot might have, i.e., they assume that every configuration on the graph is acessible from a neighbouring one. The drawbacks of $A^*$ and its variants provide motivations for so called \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then search it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result this tree can be grown in a way that respects the kinodynamic constraints of the robot. Furthermore its randomised nature allows it to find reasonable paths quickly in large configuration spaces, while avoiding obstacles. Furthermore RRT$^*$ is asymptotically optimal, i.e., an optimal path in the $\mathcal{S}$ is guarantied as the sampling time goes to infinity. Many variants of this algorithm provide improved performance and faster convergence in practice by, for example, heuristically shriking the sampling space \cite{gammell2014informed}.
 
