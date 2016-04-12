@@ -23,7 +23,7 @@
 %\usepackage{amssymb}  % assumes amsmath package installed
 
 \title{\LARGE \bf
-Rapidly Exploring Learning Trees.
+Rapidly Exploring Learning Trees
 }
 \usepackage{mathtools}
 \usepackage{amsmath}
@@ -96,9 +96,10 @@ Our work, can also be viewed as a graph, or rather tree-based approach. Instead 
 
 
 \section{Background}
-In this section we briefly revisit the two main problems that this paper is concerned with. The path planning problem, which seeks to find an optimal path given a cost function and the inverse problem, that seeks to find a cost function, given optimal paths.
-\subsection{The Path Planning Problem}
-When planning a path,  we need to consider the space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spacial quantities such as position and orientation. A path planner is called to plan an obstacle free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}configuration  $g =s_{l_{\zeta}} $. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path, i.e.,
+We begin with background on path planning and inverse reinforcement learning for path planning.
+
+\subsection{Path Planning}
+Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_0,s_1,s_2$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_0$ to a goal \footnote{In our notation the term $\zeta$ will be used for a general path. The term $\zeta_{o,g}$ will be used when a specific path is being reffered to}configuration  $g =s_{l_{\zeta}} $. There could be however several possible paths to the goal state, so path planners usually employ a \emph{cost functional}, $C(\zeta)$ as a scoring mechanism. While the form of $C(\zeta)$ may vary significantly depending on the application, it is common to define it as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$, is therefore the sum of the individual costs along the path, i.e.,
 \begin{equation}
 	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1}),
 \end{equation}
