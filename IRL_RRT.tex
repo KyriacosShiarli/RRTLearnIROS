@@ -80,7 +80,9 @@ In this paper, we present methods for inverse reinforcement learning of RRT$^*$ 
 
 \section{Related Work}
 
-Since IRL's introduction there have been several attempts to apply it to robotics. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space in a grid-like form to keep computation tractable. This provides several limitations for robotics. First, the size of the state-action space usually encountered in robotics is usually prohibitive for such models. Second even if such models are build, the specific kinodynamic constraints of the robot cannot be easily be satisfied by such representations, as they introduce non-markovian dynamics. 
+\sw{General IRL related work here.}
+
+Substantial research has applied IRL to robotics \sw{cite}. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space. This introduces several key limitations. First, the size of the state-action space encountered in robotics is often prohibitive for such models. Second, the specific kinodynamic constraints of the robot cannot be easily be expressed by such representations, as they introduce non-Markovian dynamics. \sw{why? this is still unclear.} 
 
 In this paper we replace the typical planner used in IRL with one that is more convienient for robotic applications while retaining the main idea behind IRL, i.e., learning the underlying cost function to that planner using data from demonstrations.
 
