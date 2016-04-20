@@ -5,6 +5,8 @@
 \documentclass{article}  % Comment this line out if you need a4paper
 \usepackage{ijcai16}
 \usepackage{times}
+\usepackage{algorithmic}
+\usepackage{algorithm}
 %\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4 paper
 
 % See the \addtolength command later in the file to balance the column lengths
@@ -25,6 +27,7 @@ Rapidly Exploring Learning Trees
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{color}
+\usepackage{amssymb}
 \DeclareMathOperator*{\argmin}{\arg\!\min} 
 \DeclareMathOperator*{\argmax}{\arg\!\max} 
 \author{Kyriacos Shiarlis \\
@@ -95,7 +98,7 @@ Our work, can also be viewed as a graph, or rather tree-based approach. Instead 
 \section{Background}
 We begin with background on path planning and inverse reinforcement learning for path planning.
 
-\subsection{Path Planning}
+\subsection{Path Planning \label{subsec:path_planning}}
 Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_1,s_2,s_3$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_1$ to a goal configuration  $g =s_{l_{\zeta}}$. Whn the initial and goal configurations are implied, we refer to a path as simply $\zeta$.
 
 Because there could be several paths to the goal, path planners typially employ a \emph{cost functional}, $C(\zeta)$ often defined as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$ is therefore the sum of the individual costs along the path, i.e.,
@@ -110,9 +113,15 @@ where $Z_{o,g}$ is the set of all possible paths such that $s_1 = o, s_{l_\zeta}
 
 Many path planning algorithms discretise $\mathcal{S}$ and use graph search algorithms like $A^*$ to find the optimal path. Under mild assumptions, these approaches are guaranteed to find the best path on the graph, but not in $\mathcal{S}$. However, they scale poorly in the size of $\mathcal{S}$, as larger and larger graphs are required. Furthermore, such methods do not address kinodynamic constraints, i.e., they assume that every configuration on the graph is accessible from a neighbouring one. 
 
-These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result, this tree can be grown in a way that respects kinodynamic constraints. Furthermore, a sampled-based approach can quickly find good, but not optimal, paths in large configuration spaces, while avoiding obstacles.RRT$^*$ is also asymptotically optimal, i.e., it is guranteed to find an optimal path in $\mathcal{S}$ as the sampling time goes to infinity. Many variants of RRT$^*$ provide improved performance and faster convergence in practice by, for example, heuristically shriking the sampling space \cite{gammell2014informed}.
+These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result, this tree can be grown in a way that respects kinodynamic constraints. Furthermore, a sampled-based approach can quickly find good, but not optimal, paths in large configuration spaces, while avoiding obstacles.
 
-\subsection{Inverse Reinforcement Learning for Path Planning}
+%  RRT$^*$ is also asymptotically optimal, i.e., it is guranteed to find an optimal path in $\mathcal{S}$ as the sampling time goes to infinity. Many variants of RRT$^*$ provide improved performance and faster convergence in practice by, for example, heuristically shriking the sampling space \cite{gammell2014informed}.
+
+% The most significant difference between A$^*$ and RRT$^*$ is that while former is deterministic, the latter is probabilistic. It is important to understand how this distinction affects learning.
+
+In terms of the notation we have introduced, A$^*$ is capable of achieving the minimisation of \eqref{eq:back_plan} for a set $Z_{o,g}$ that is determined by its resolution (discretisation). RRT$^*$ on the other hand, for a given time budget T is capable of finding the maximum of a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$ but in this case $Z_{o,g}$ is continouous and not restricted by any type of discretisation. Furthermore as $T \rightarrow \infty$ the RRT$^*$ performs a minimisation over $Z_{o,g}$, i.e., it is asymptotically optimal. Intuitively, the RRT$^*$ is asymptotically optimal as a function of sampling time and A$^*$ is asymptotically optimal as a function of resolution. This distintion will become very important when we attempt to learn cost functions for these planners in the next section.
+
+\subsection{Inverse Reinforcement Learning for Path Planning \label{subsec:inverse_problem}}
 Path planning involves finding a (near) optimal path to the goal given a cost function. In the inverse problem, we are given example paths and must find the cost function for which these paths are (near) optimal.  The example paths comprise a dataset $\mathcal{D} = (\zeta^1_{o_1,g_1},\zeta^2_{o_2,g_2}...\zeta^D_{o_D,g_D})$ where $\zeta^i_{o_i,g_i}$ is an example path with initial and final configurations $o_i,g_i$ respectively. We assume the unknown cost function is of the form,
 \begin{equation}
 	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j), \label{eq:inner_prod}
@@ -167,7 +176,8 @@ where,
 
 The inverse problem can therefore be seen as an iterative procedure, that first solves \eqref{eq:augmented_max} in the inner loop while keeping the weights constant. Based on that solution, it updates the weights using \eqref{eq:update1} in the outer loop. The weights at convergence represent the cost function that is used to plan the future behaviour of the agent. In \cite{ratliff2006maximum}, A$^*$ search was used for planning in the inner loop, assuming that the domain contained acyclic positive costs. In this paper, we make the same assumptions but develop methods that use RRT$^*$ for planning.
 
-\section{Methods}
+\section{Method}
+	In this section we describe how feature sums are calculated for sampled based planners. We then go on to modify the maximum margin formulation to one that is appropriate for sample based planners. We explain the implications of this modifications and offer some insight as to their interpretation. Finally we propose an sampling based learning algorithm that leverages the nature of the RRT$^*$ to speed up the learning procedure.
 	\subsection{Feature Sums and Sampled Based Planners}
 		Feature sums, $F(\zeta)$, can be seen as the  `fingerprints' of paths, and their definition is of crucial importance in the inverse problem. When planning on a fixed graph, like in the case of MDPs or A$^*$ search, it is easy to define the feature sums as the \emph{edge} costs on the graph. Furthermore if planning in continous domains we may consider integrals along the path. In RRT's however the tree that is being built has neither a fixed structure, nor an analytical form. Thus, the first step towards learning RRT$^*$ cost functions from demonstration is to come up with a reasonable approximation of $F(\zeta)$ for a path. This approximation must be consistent with the definition of the cost for a configuration pair. One such definition for cost is as follows.
 		\begin{equation}
@@ -184,83 +194,114 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 		\end{equation}
 
 
-	\subsection{Learning on a time budget}
-		The most significant difference between A$^*$ and RRT$^*$ is that while former is deterministic, the latter is probabilistic. It is important to understand how this distinction affects learning.
-
-		 In terms of the notation we have introduced, A$^*$ is capable of achieving the minimisation of \eqref{eq:back_plan} for a set $Z_{o,g}$ that is determined by its resolution (discretisation). RRT$^*$ on the other hand, for a given time budget T is capable of finding the maximum of a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$ but in this case $Z_{o,g}$ is continouous and not restricted by any type of discretisation. Furthermore as $T \rightarrow \infty$ the RRT$^*$ performs a minimisation over $Z_{o,g}$, i.e., it is asymptotically optimal. Intuitively, the RRT$^*$ is asymptotically optimal as a function of sampling time and A$^*$ is asymptotically optimal as a function of resolution. This has an important implication when minimising \eqref{eq:unconstrained}. Before the maximisation over $Z_{o,g}$ was defined by the discretisation and could be solved relatively quickly for coarse graphs. Now this maximisation is infeasible unless the planning time $T$ is infinite so we will need to resort of approximations. The optimality of RRT$^*$ as a function of $T$ is highly dependent on $\mathcal{S}$ and the cost function (i need a citation here), making it very difficult to know how good our approximations are. In this paper we present an empirical demonstration that learning RRT$^*$ cost functions from demonstration is effective. 
 
 	\subsection{Approximate Maximum Margin Planning}
-		In the previous sections we reasoned about how the infinite constraints of Equation \eqref{eq:const1} could be reduced to a single constraint for each example resulting in Equation \eqref{eq:const}. As we explained above however this is no longer the case. What exactly should I claim here? That empirically things work well? What kind of theoretical results would be not too ambitious to pursue?
 
-		
+		In Section \ref{subsec:inverse_problem}  we reasoned about how the infinite constraints of Equation \eqref{eq:const1} could be reduced to a single constraint for each example resulting in Equation \eqref{eq:const}. In section \ref{subsec:path_planning} however we discussed that the RRT$^*$ can only achieve the minimisation over the full set of paths $Z_{o,g}$ if given infinite time.
+		This ofcourse is not feasible. Therefore, in our formulation we will assume that for a certain time budget T, the RRT$^*$ performs a minimisation over for an unknown set $\tilde{Z}_{o,g}$ and hence satisfies a modified version of \eqref{eq:const},
+\begin{equation}
+	C(\zeta^i_{o_i,g_i}) \leq \min_{\zeta_{o_i,g_i} \in \tilde{Z}_{o_i,g_i}} C(\zeta) \quad \forall i. \label{eq:const_rrt}
+\end{equation}
+	And as a consequence we can rewrite the unconstrained objective function of Equation \eqref{eq:unconstrained} as:
+
+	\begin{equation}
+	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in \tilde{Z}_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained_rrt}
+	\end{equation}
+	This gives rise to a similar learning procedure to before with the crucial difference that the planning step is executed by an RRT$*$ planner and not a deterministic one, like A$^*$. Because of this distinction, while before the set $Z_{o_i,g_i}$ was fixed for all iterations of the learning, now $\tilde{Z}_{o_i,g_i}$ changes every time we invoke the sample based planner. As a result we can interpret the sample-based planning procedure of RRT$*$ as a smart way of sampling \emph{constraints} that we want our cost function to satisfy.
+
+	It is also important to note that $\tilde{Z}_{o_i,g_i}$ not only changes for every learning iteration, but it is also unknown. Furthermore the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -and also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration and hence allow the learning of a cost function from a set of demonstrated paths.
+
+\subsection{Cached RRT$^*$ for faster learning}
+	In Section \ref{subsec:inverse_problem} we explain that learning cost function for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in such a direction that bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$ planning can be a costly procedure, which might render learning impractical. Here we propose a method, we call \emph{simulated sampling}, that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
+
+	Two of the most costly operations of the RRT$^*$ argorithm are, 1) Finding the nearest neighbour to a newly sampled point and 2) Finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However these procedures of the algorithm are completely independent of the cost function that the planner is using, and which changes at every iteration of learning. This means that the RRT$^*$ algorithm can be split in two separate independent steps. 
+
+	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, the initial point $x_init$ and the steer step size $\eta$. For each of the randomly sampled points $x_{rand}$ we find the nearest neighbour, $x_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $x_{new}$ by steering from $x_{nearest}$ to $x_{rand}$. Next, we query the radius neighbours of $x_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is??. The point $x_{new}$ is and the set $X_{near}$ are stored together in the \texttt{pointCache}, which is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a preprocessing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
+
+
+
+
+	\begin{algorithm}
+	\caption{\texttt{cacheRRT}($pointsToSample$,$x_{init}$,$\eta$)}
+	\label{alg:rrt_cache}
+	\begin{algorithmic}[1]
+	\STATE $pointCache \gets \emptyset$
+	\STATE $V \gets {x_{init}}$
+	\FOR{$i=0 \dots pointsToSample $}
+	\STATE $x_{rand} \gets SampleFree_i$
+	\STATE $x_{nearest} \gets \texttt{Nearest}(V,x_{rand})$
+	\STATE $x_{new} \gets \texttt{Steer}(x_{nearest},x_{rand})$
+	\STATE $X_{near} \gets \texttt{Near}(V,{x_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
+	\STATE $V\gets V \cup x_{new}$
+	\STATE $pointCache \gets pointCache \cup \{x_{new},X_{near}\}$
+	\ENDFOR
+	\RETURN $pointCache$
+
+	\end{algorithmic}
+	\end{algorithm}
+
+	The result of Algorithm \ref{alg:rrt_cache} can now act as input to the second procedure described in Algorithm \ref{alg:plan_cached}. The procedure is identical to the RRT$^*$ wiring and re-wiring procedures in \cite{karaman2011sampling}, with the important difference that the vertexes of the tree and their neighbours at each iteration are already known. As learning proceeds and the cost function we are required to plan with changes, so will the wiring of this tree, but the points involved in this procedure are determined before. Furthermore, the wiring procedure of these points, is identical to that of RRT$^*$, this is crucial as we want to keep the planner used during learning and the planner used to execute the final cost function identical.
+
+
+	\begin{algorithm}
+	\caption{\texttt{planCachedRRT$^*$}($pointCache$,$x_{init}$)}
+	\label{alg:rrt_cache}
+	\begin{algorithmic}[1]
+	\STATE $E \gets \emptyset$
+	\STATE $V \gets {x_{init}}$
+	\FOR{$i=0 \dots |pointCache| $}
+	\STATE $x_{nearest} \gets pointCache\{x_{nearest}^i\}$
+	\STATE $x_{new} \gets pointCache\{x_{new}^i\}$
+	\STATE $X_{near} \gets pointCache\{X_{near}^i\}$
+	\STATE $V\gets V \cup x_{new}$
+	\STATE $x_{min}\gets x_{nearest}$
+	\STATE $c_{min}\gets \texttt{Cost}(x_{nearest}) + c(x_{nearest},x_{new})$
+	\FOR{$x_{near} \in X_{near} $}
+	\STATE $c_{near} \gets \texttt{Cost}(x_{near}) + c(x_{near},x_{new})$
+	\IF {\texttt{CollisionFree}($x_{near},x_{new}$) and  $c_{near}<c_{new}$}
+	\STATE $x_{min} \gets x_{near}; c_{min}\gets c_{near}$
+	\ENDIF
+	\ENDFOR
+	\STATE $E \gets E \cup \{(x_{min},x_{new})\} $
+	\FOR{$x_{near} \in X_{near} $}
+	\STATE $c_{new} \gets \texttt{Cost}(x_{near}) + c(x_{near},x_{new})$
+	\IF {\texttt{CollisionFree}($x_{near},x_{new}$) and  $c_{new}<\texttt{Cost}(x_{near})$}
+	\STATE $x_{parent} \gets \texttt{Parent}(x_{near})$
+	\STATE $E \gets E  \smallsetminus {(x_{parent},x_{near})} \cup {(x_{new},x_{near})} $
+	\ENDIF
+	\ENDFOR
+	\ENDFOR
+	\RETURN $V,E$
+
+	\end{algorithmic}
+	\end{algorithm}
+
+
+	% \STATE $\widetilde{\mu}^{\mathcal{D}} \gets \mathtt{empiricalFE}(\mathcal{D})$\hfill \COMMENT{using \eqref{eqn:empirical_fe}}
+	% \STATE $\widetilde{\mu}^{\mathcal{F}} \gets \mathtt{empiricalFE}(\mathcal{F})$ 
+	% \STATE $P_{\mathcal{D}}^{s_1} \gets \mathtt{initialStateDistribution}(\mathcal{D})$
+	% \STATE $P_{\mathcal{F}}^{s_1} \gets \mathtt{initialStateDistribution}(\mathcal{F})$
+	% \STATE $w^{\mathcal{F}}_k\gets 0\quad\forall k\in\{1,\ldots,K\}$
+	% \REPEAT
+	% \STATE $R(s,a) \gets (w^{\mathcal{D}}+w^{\mathcal{F}})^T\phi(s,a)\quad\forall s\in\mathcal{S},a\in\mathcal{A}$
+	% \STATE $\pi \gets \mathtt{softPlan}(\mathcal{S},\mathcal{A},T,R)$\hfill\COMMENT{using \eqref{eq:soft_backup}}
+	% \STATE $\mu^\pi|_{\mathcal{D}} = \mathtt{calculateFE}(\pi,T,P_{\mathcal{D}}^{s_1})$
+	% \STATE $\mu^\pi|_{\mathcal{F}} = \mathtt{calculateFE}(\pi,T,P_{\mathcal{F}}^{s_1})$
+	% \STATE $w^{\mathcal{D}} \leftarrow w^{\mathcal{D}} - \alpha (\mu^\pi|_{\mathcal{D}} - \widetilde{\mu}^{\mathcal{D}})$
+	% \STATE $w^{\mathcal{F}} \leftarrow \frac{(\mu^\pi|_{\mathcal{F}} - \widetilde{\mu}^{\mathcal{F}})}{\lambda}$
+
+	% \IF {$\lambda > \lambda_{min}$}
+	% \STATE $\lambda \leftarrow \alpha_{\lambda}\lambda$
+	% \ENDIF
+	% \UNTIL{convergence}
+	% \RETURN $R,\pi$
+
+
+
 
 
 	\section{Experiments}
 		In this section we evaluate the performance of aproximate maximum margin planning with RRT$^*$ as the base planner. To do so we i
-
-
-
-
-
-	\section{Future}
-		\subsection{Status}
-		\begin{itemize}
-			\item RRT for x,y configurations done. Adding orientation should be trivial.
-			\item New simulator almost done. I am using Gazebo which also simulates physics, but I have been havign a lot of problems with the local planner (DWA). Maybe these will be fixed if I add orientation to the planner. I am thinking of incorporating a different local planner such as elastic bands. It seems to be better of my purposes.
-			\item I can begin to collect data and even to learning, but I am not yet able to execute that plan reliably in control space (v,w).
-		\end{itemize}
-		\subsection{Plan}
-		\begin{itemize}
-			\item Finish Simulator by the end of the March. 
-			\item Run a first comparison of A* and RRT* using max margin planning and cost-correlation similarity, by mid April. This will be done for the static human obstacle case. I.e. we will not be executing the plan.
-			\item Implement a new idea I have and have a full set of results for all methods to be used by the end of April. Make a new assesment in terms of motivation and baselines.
-			\item May: AAMAS poster, AAMAS, deliverable. 
-			\item June: Collect data on static scenario and the real robot. Perform learning. Put it back on the robot.
-			\item July: Atempt the dynamic cases. Find the best way to to do this. Perhaps consider a semi dynamic case.
-			\item August: Finalise results and do the writeup, which I will also be doing in parallel.
-		\end{itemize}
-
-		\subsection{Concerns}
-		\begin{itemize}
-			\item It could be very hard to incorporate the dynamic cases. I need to perfect the local planner which I dont have now. From what I have seen in related work, other researchers simply plan on a `snapshot' of a dynamic case and simply demonstrate that path. In general, evaluation for such work is a bit strange.
-			\item I can find no comparison between RRT* and A*. So I wonder how I should compare them. 
-			People dont tend to use A* as a baseline for RRT* speed or path quality.
-			\item I would really like to try this method on perhaps another dataset. But I cant figure ou what.
-		\end{itemize}
-
-	\section{Reasongs for IROS Failure}
-		\subsection{Absense of a proper baseline}
-			For the proposed scenarios (dataset), my baseline which is basically the objective in equation \eqref{eq:back_minim} was performing just as good as the maximum margin method.
-
-			\textbf{Solution 1:} Use A* as a baseline. This seems like a natural baseline since existing IRL methods can be applied trivially to A*. These is also a max margin formulation for it. A* provides optimal planning and I wouldn’t really expect it to do worse than RRT* that is sub optimal. If we can however show that our algorithms can perform close to A* and can therefore be used whenever A* is not capable of performing well, i.e when the problem is high dimensional, or when there is a time budget for finding a solution.\\
-
-			\textbf{Solution 2:} Come up with a harder scenario and beat the predefined baseline i.e. Max Margin vs No margin.\\
-
-			\textbf{Solution 3:} Come up with a harder scenario and beat the predefined baseline and add Cost Correlation Similarity method. Hoping that it will be better than all of them.\\
-
-			\textbf{Solution 4:} Try to beat a continuous trajectory optimisation method from this paper: http://graphics.stanford.edu/projects/cioc/cioc.pdf. I think that this is a strong baseline. It would show the applicability of our method in high dimentional control domains, if it succeeds. It would require lots of work in matlab to code the RRT and incorporate it in the examples. It would also require a slightly different definition for the RRT.
-
-		\subsection{The dataset was trivial}
-			For the proposed dataset there were a lot of cost functions that would peform reasonably. There was not really a difference in their performance on the 2 evaluation measures (path cost on ground truth cost function and similarity.). This was true both of the dataset collected from human demonstrations and the one collected using RRTs from a ground truth cost function.
-
-				\textbf{Solution 1:} A more complicated navigation task? Perhaps even increasing the size of the room will help.\\
-
-				\textbf{Solution 2:} Find some kind of simulated manipulation environment. The paper I mentioned before has a simple manipulation coded in matlab. Manipulators pose very big problems for A$^*$ because of the dimentionality and the kinodynamic constraints and they also pose a problem for trajectory optimisation methods because they are highly non-convex.
-
-% Sampling based path planning algortihms such as Probabilistic Roadmaps(PRM) \cite{kavraki1996probabilistic} and Rapidly-Exploring-Random Trees(RRT)\cite{lavalle1998rapidly} have seen increasing popularity in various robotic planning applications, due to their ability to handle high dimentional continouous configuration spaces reliably and in reasonable time. In contrast to other planning and search algortihms such as A$^*$ and $D^*$, these algortihms do not require the specification of an admisible heuristic while sacrificing optimality for speed and state space coverage. While many interesting variants of the RRT have been invented such as the transition based RRT (T-RRT) \cite{jaillet2008transition}, by far the most significant contribution is that of the RRT$^*$ algorithm \cite{karaman2011sampling} where the original algorithm is extended to incorporate cost functions, based upon which an optimal path is guaranteed given an infinite amount of samples. These cost functions in essence determine the plan and as a result the behaviour of the robot in different situations, rendering their definition extremely important for roboticists.
-% At times, rather than defining (and tuning) a cost function for a robot (or any other controled system) it is easier to demonstrate the desired plan or behaviour, and use algorithms to uncover the cost function that will bring about this behaviour. Examples of such methods lie in the fields of Inverse optimal control (IOC) and Inverse Reinforcement Learning (IRL)\cite{abbeel2004apprenticeship}, which due to their aforementioned property have been subject to increasing attention as well as success. A arguement for learning cost functions,
-% rather than direct mappings to actions in a supervised manner [cite survey] is generality. In particular
-% because cost functions are defined prior to planning, the policy of the agent(or robot) will differ if the
-% environment (dynamics etc) changes while a policy learned by supervision will need to be revised. 
-
-% Despite the appeal for learning planner cost functions, to our knowledge, there has been no known work that allows the learning of cost functions for RRT* planners (and its many derivatives [cite informed rrt]). This is exactly the contribution of this paper. 
-
-% One application where RRTs are widely used is mobile robot navigation. At the same time, as robots enter public spaces, the environments in which robots are called to navigate have become increasingly complex[] and unpredictable. This means that a mobile robot's navigation cost function needs to be tediously tuned, in order to keep up with the task. An algorithm that can learn such a cost function from demonstration, without the need to change the planner would be a powerful tool in the arms of a roboticist.
-
-%  % An essential assumption of these methods is that the planner used in the learning step of the algorithm must be used when planning under the learned cost function, otherwise the observed behaviour will not be compatible with the observations.
-% Complex mobile robotics tasks, such as navigation are typically not modelled as control problems because of their computational complexity. Furthermore, modelling path planning as a Markov Decision Process (MDP) is usually avoided also due to its computational cost, with the exception of the case where this MDP is deterministic, which yields the same open loop policy as A$^*$. Therefore, even if our world was deterministic we would still be limited by the drawacks of A$^*$ planning from which probabilistic methods dont.\\
-
-% It should be apparent that an algortihm that uses RRT$^*$ to learn as well as plan, would be of great value to roboticists seeking to incorporate human demonstrations into the design of their robots.
 
 
 \bibliographystyle{IEEEtran}
