@@ -7,6 +7,7 @@
 \usepackage{times}
 \usepackage{algorithmic}
 \usepackage{algorithm}
+\usepackage{subcaption}
 %\documentclass[a4paper, 10pt, conference]{ieeeconf}      % Use this line for a4 paper
 
 % See the \addtolength command later in the file to balance the column lengths
@@ -150,7 +151,7 @@ The constraint is an inequality because $Z_{o,g}$ contains only paths available 
 Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to the example path $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. The full optimisation formulation of Maximum Margin Planning is as follows.
 
 \begin{equation}
-	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \tau_i \label{eq:max_marg}
+	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \tau_i \label{eq:mas_marg}
 \end{equation}
 \begin{equation}
 	\text{s.t.} \quad C(\zeta^i_{o_i,g_i}) - \tau_i \leq \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta) \quad \forall i,
@@ -164,7 +165,7 @@ meaning that minimising,
 \begin{equation}
 	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained}
 \end{equation}
-is equivalent to minimizing \eqref{eq:max_marg}, i.e., the slacks are tight.
+is equivalent to minimizing \eqref{eq:mas_marg}, i.e., the slacks are tight.
 The minimum can be found by computing a subgradient and performing gradient descent on the above objective:
 \begin{equation}
 	\nabla_{\mathbf{w}} =\mathbf{w} +  \frac{\gamma}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\tilde{\zeta}^*_{o_i,g_i}), \label{eq:update1}
@@ -195,7 +196,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 
 
 
-	\subsection{Approximate Maximum Margin Planning}
+	\subsection{Approximate Maximum Margin Planning \label{subsec:ammp}}
 
 		In Section \ref{subsec:inverse_problem}  we reasoned about how the infinite constraints of Equation \eqref{eq:const1} could be reduced to a single constraint for each example resulting in Equation \eqref{eq:const}. In section \ref{subsec:path_planning} however we discussed that the RRT$^*$ can only achieve the minimisation over the full set of paths $Z_{o,g}$ if given infinite time.
 		This ofcourse is not feasible. Therefore, in our formulation we will assume that for a certain time budget T, the RRT$^*$ performs a minimisation over for an unknown set $\tilde{Z}_{o,g}$ and hence satisfies a modified version of \eqref{eq:const},
@@ -209,73 +210,105 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 	\end{equation}
 	This gives rise to a similar learning procedure to before with the crucial difference that the planning step is executed by an RRT$*$ planner and not a deterministic one, like A$^*$. Because of this distinction, while before the set $Z_{o_i,g_i}$ was fixed for all iterations of the learning, now $\tilde{Z}_{o_i,g_i}$ changes every time we invoke the sample based planner. As a result we can interpret the sample-based planning procedure of RRT$*$ as a smart way of sampling \emph{constraints} that we want our cost function to satisfy.
 
-	It is also important to note that $\tilde{Z}_{o_i,g_i}$ not only changes for every learning iteration, but it is also unknown. Furthermore the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -and also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration and hence allow the learning of a cost function from a set of demonstrated paths.
+	It is also important to note that $\tilde{Z}_{o_i,g_i}$ not only changes for every learning iteration, but it is also unknown. Furthermore the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration and hence allow the learning of a cost function from a set of demonstrated paths.
 
-\subsection{Cached RRT$^*$ for faster learning}
-	In Section \ref{subsec:inverse_problem} we explain that learning cost function for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in such a direction that bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$ planning can be a costly procedure, which might render learning impractical. Here we propose a method, we call \emph{simulated sampling}, that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
+\subsection{Cached RRT$^*$ for faster learning \label{subsec:cached}}
+	In Section \ref{subsec:inverse_problem} we explained that learning cost function for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in a direction that would bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$ planning can be a costly procedure, and might render learning impractical. In this section we propose a method that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
 
-	Two of the most costly operations of the RRT$^*$ argorithm are, 1) Finding the nearest neighbour to a newly sampled point and 2) Finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However these procedures of the algorithm are completely independent of the cost function that the planner is using, and which changes at every iteration of learning. This means that the RRT$^*$ algorithm can be split in two separate independent steps. 
+	Two of the most costly operations of the RRT$^*$ argorithm are, 1). Finding the nearest neighbour to a newly sampled point and 2). Finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However these procedures of the algorithm are completely independent of the cost function that the planner is using. This means that the RRT$^*$ algorithm can be split in two separate independent steps. 
 
-	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, the initial point $x_init$ and the steer step size $\eta$. For each of the randomly sampled points $x_{rand}$ we find the nearest neighbour, $x_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $x_{new}$ by steering from $x_{nearest}$ to $x_{rand}$. Next, we query the radius neighbours of $x_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is??. The point $x_{new}$ is and the set $X_{near}$ are stored together in the \texttt{pointCache}, which is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a preprocessing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
+	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, $p$, the initial point $s_init$ and the steer step size $\eta$. For each of the randomly sampled points $s_{rand}$ we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is??. The points $s_{new}$,$s_{nerest}$ and the set $S_{near}$ are stored together in the map \texttt{pointCache}, which is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a preprocessing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
 
 
 
 
 	\begin{algorithm}
-	\caption{\texttt{cacheRRT}($pointsToSample$,$x_{init}$,$\eta$)}
+	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
 	\label{alg:rrt_cache}
 	\begin{algorithmic}[1]
 	\STATE $pointCache \gets \emptyset$
-	\STATE $V \gets {x_{init}}$
-	\FOR{$i=0 \dots pointsToSample $}
-	\STATE $x_{rand} \gets SampleFree_i$
-	\STATE $x_{nearest} \gets \texttt{Nearest}(V,x_{rand})$
-	\STATE $x_{new} \gets \texttt{Steer}(x_{nearest},x_{rand})$
-	\STATE $X_{near} \gets \texttt{Near}(V,{x_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
-	\STATE $V\gets V \cup x_{new}$
-	\STATE $pointCache \gets pointCache \cup \{x_{new},X_{near}\}$
+	\STATE $V \gets {s_{init}}$
+	\FOR{$i=0 \dots p $}
+	\STATE $s_{rand} \gets SampleFree_i$
+	\STATE $s_{nearest} \gets \texttt{Nearest}(V,s_{rand})$
+	\STATE $s_{new} \gets \texttt{Steer}(s_{nearest},s_{rand})$
+	\STATE $S_{near} \gets \texttt{Near}(V,{s_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
+	\STATE $V\gets V \cup s_{new}$
+	\STATE $pointCache \gets pointCache \cup \{s_{new},S_{near}\}$
 	\ENDFOR
 	\RETURN $pointCache$
 
 	\end{algorithmic}
 	\end{algorithm}
 
-	The result of Algorithm \ref{alg:rrt_cache} can now act as input to the second procedure described in Algorithm \ref{alg:plan_cached}. The procedure is identical to the RRT$^*$ wiring and re-wiring procedures in \cite{karaman2011sampling}, with the important difference that the vertexes of the tree and their neighbours at each iteration are already known. As learning proceeds and the cost function we are required to plan with changes, so will the wiring of this tree, but the points involved in this procedure are determined before. Furthermore, the wiring procedure of these points, is identical to that of RRT$^*$, this is crucial as we want to keep the planner used during learning and the planner used to execute the final cost function identical.
+	The result of Algorithm \ref{alg:rrt_cache} can now act as input to the second procedure described in Algorithm \ref{alg:plan_cached}. The procedure is very similar to the RRT$^*$ wiring and re-wiring procedures in \cite{karaman2011sampling} and returns a minimum cost path to the goal. An important difference however is that the verteces of the tree and their neighbours at each iteration are already known. This speeds up the computation while keeping the planner used during learning and the planner used to execute the final cost function identical. As learning proceeds and the cost function we are required to plan with changes, so will the wiring of this tree, but the points involved in this procedure will not. 
 
 
 	\begin{algorithm}
-	\caption{\texttt{planCachedRRT$^*$}($pointCache$,$x_{init}$)}
-	\label{alg:rrt_cache}
+	\caption{\texttt{planCachedRRT$^*$}($pointCache$,$s_{init}$,$c()$)}
+	 \label{alg:plan_cached}
 	\begin{algorithmic}[1]
 	\STATE $E \gets \emptyset$
-	\STATE $V \gets {x_{init}}$
+	\STATE $V \gets {s_{init}}$
 	\FOR{$i=0 \dots |pointCache| $}
-	\STATE $x_{nearest} \gets pointCache\{x_{nearest}^i\}$
-	\STATE $x_{new} \gets pointCache\{x_{new}^i\}$
-	\STATE $X_{near} \gets pointCache\{X_{near}^i\}$
-	\STATE $V\gets V \cup x_{new}$
-	\STATE $x_{min}\gets x_{nearest}$
-	\STATE $c_{min}\gets \texttt{Cost}(x_{nearest}) + c(x_{nearest},x_{new})$
-	\FOR{$x_{near} \in X_{near} $}
-	\STATE $c_{near} \gets \texttt{Cost}(x_{near}) + c(x_{near},x_{new})$
-	\IF {\texttt{CollisionFree}($x_{near},x_{new}$) and  $c_{near}<c_{new}$}
-	\STATE $x_{min} \gets x_{near}; c_{min}\gets c_{near}$
+	\STATE $s_{nearest} \gets pointCache\{s_{nearest}^i\}$
+	\STATE $s_{new} \gets pointCache\{s_{new}^i\}$
+	\STATE $S_{near} \gets pointCache\{S_{near}^i\}$
+	\STATE $V\gets V \cup s_{new}$
+	\STATE $s_{min}\gets s_{nearest}$
+	\STATE $c_{min}\gets \texttt{Cost}(s_{nearest}) + c(s_{nearest},s_{new})$
+	\FOR{$s_{near} \in S_{near} $}
+	\STATE $c_{near} \gets \texttt{Cost}(s_{near}) + c(s_{near},s_{new})$
+	\IF {\texttt{CollisionFree}($s_{near},s_{new}$) and  $c_{near}<c_{new}$}
+	\STATE $s_{min} \gets s_{near}; c_{min}\gets c_{near}$
 	\ENDIF
 	\ENDFOR
-	\STATE $E \gets E \cup \{(x_{min},x_{new})\} $
-	\FOR{$x_{near} \in X_{near} $}
-	\STATE $c_{new} \gets \texttt{Cost}(x_{near}) + c(x_{near},x_{new})$
-	\IF {\texttt{CollisionFree}($x_{near},x_{new}$) and  $c_{new}<\texttt{Cost}(x_{near})$}
-	\STATE $x_{parent} \gets \texttt{Parent}(x_{near})$
-	\STATE $E \gets E  \smallsetminus {(x_{parent},x_{near})} \cup {(x_{new},x_{near})} $
+	\STATE $E \gets E \cup \{(s_{min},s_{new})\} $
+	\FOR{$s_{near} \in S_{near} $}
+	\STATE $c_{new} \gets \texttt{Cost}(s_{near}) + c(s_{near},s_{new})$
+	\IF {\texttt{CollisionFree}($s_{near},s_{new}$) and  $c_{new}<\texttt{Cost}(s_{near})$}
+	\STATE $s_{parent} \gets \texttt{Parent}(s_{near})$
+	\STATE $E \gets E  \smallsetminus {(s_{parent},s_{near})} \cup {(s_{new},s_{near})} $
 	\ENDIF
 	\ENDFOR
 	\ENDFOR
-	\RETURN $V,E$
+	\STATE $\zeta_{min} \gets \texttt{minCostPath}(V,E,c())$
+	\RETURN $\zeta_{min}$
 
 	\end{algorithmic}
 	\end{algorithm}
 
+	The full aproximate Maximum Margin Planning procedure to learn RRT$^*$ cost functions from demonstration is described in Algorithm \ref{alg:ammp}. First we initialise the weights, either ramdomly or using a cost function that simply favours shortest paths. Then, for each datapoint $\zeta_i$ we calculate feature sums and run \texttt{cacheRRT}. The main learning loop involves cycling through all datapoints and finding the best path under a loss augmented cost function. The feature sums of this path are calculated and subsequently the difference with the demonstrated feature sums is computed. At the end of each iteration an average gradient is calculated and the cost function is updated. At convergence the learned weights are returned.
+
+	\begin{algorithm}
+	\caption{\texttt{AproximateMMP}($D,p,\eta,\lambda,\delta$)\label{alg:ammp}}
+	 \label{alg:plan_cached}
+	\begin{algorithmic}[1]
+	\STATE $\mathbf{w} \gets \texttt{initialiseWeights}$
+	\STATE $\mathbf{\tilde{F}} \gets \emptyset$
+	\STATE $R \gets \emptyset$
+	\FOR{$\zeta^i \text{ in } D$}
+	\STATE $\tilde{F}_{\zeta^i} \gets \texttt{FeatureSums}(\zeta^i)$
+	\STATE $\mathbf{\tilde{F}} \gets \mathbf{\tilde{F}} \cup \tilde{F}_{\zeta^i}$
+	\STATE $r_i \gets \texttt{cacheRRT}(p,s_{init}^{\zeta^i},\eta)$
+	\STATE $R \gets R \cup r_i $
+	\ENDFOR
+	\REPEAT
+	\STATE $\nabla_{\mathbf{w}}\gets 0$
+	\FOR{$ \zeta^i \text{in } D $}
+	\STATE $c() \gets \texttt{getCostmap}(\mathbf{w}) + L(\zeta^i)$ 
+	\STATE $r_i \gets R\{i\}$ ;	$\tilde{F}_i \gets \mathbf{\tilde{F}}\{i\}$ 
+	\STATE $\zeta \gets \texttt{planCachedRRT}^*(r_i,x^i_{init},c())$
+	\STATE $F_i \gets \texttt{FeatureSums}(\zeta)$
+	\STATE $\nabla_{\mathbf{w}} \gets \nabla_{\mathbf{w}} + \tilde{F}_i - F_i $
+	\ENDFOR
+	\STATE $\nabla_{\mathbf{w}} \gets \lambda\mathbf{w} + \nabla_{\mathbf{w}} / |D|$
+	\STATE $\mathbf{w} \gets \mathbf{w} - \delta\nabla_{\mathbf{w}} $
+	\UNTIL{convergence}
+	\RETURN $V,E$
+
+	\end{algorithmic}
+	\end{algorithm}
 
 	% \STATE $\widetilde{\mu}^{\mathcal{D}} \gets \mathtt{empiricalFE}(\mathcal{D})$\hfill \COMMENT{using \eqref{eqn:empirical_fe}}
 	% \STATE $\widetilde{\mu}^{\mathcal{F}} \gets \mathtt{empiricalFE}(\mathcal{F})$ 
@@ -300,8 +333,115 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 
 
 
-	\section{Experiments}
-		In this section we evaluate the performance of aproximate maximum margin planning with RRT$^*$ as the base planner. To do so we i
+\section{Experiments}
+	In Section \ref{subsec:ammp} we discussed how the original MMP algorithm can be applied to RRT$^*$ and in Section \ref{subsec:cached} we introdused a cached version of RRT$^*$ that allows faster learning. In this section we compare the performance of these two proposed algorithms against the original MMP algorithm, using A$^*$ search.
+	
+	Our experiments take place in the context of socially appropriate navigation. IRL has been widely used in this setting \cite{okallearning}, \cite{henry2010learning},\cite{vasquez2014inverse}, because it is usually very hard to hardcode the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports, museums, care centers and shopping malls (need citations). 
+	\subsection{Setting}
+	Our experiments take place in a randomly generated social environment, shown in Figure \ref{fig:exp_setting}. Every arrow in the figure represents a person's position and orientation. The robot is given the task of navigating from one point in the room to the other. While it is aware of the orientation and position of different people, it has no idea on how to prioritise reaching the target quickly, avoiding people and nearing obstacles, i.e., the cost function is unknown. Instead, the robot is given a number of demonstrations in the form of a dataset $D$. Each demonstration $\zeta_i$ comes as a set of $(x,y)$ positions of the robot in the configuration space and each demonstration takes place for a different random configuration of the social environment, i.e., the people are at different positions and orientations every time. The task of the robot is to, using $D$, extract a cost function based on different features of the environment, which in turn would allow it to behave socially in future tasks.
+
+	The features involved in our experiments include three different gaussian functions of different means and diagonal covariances around each person, three different functions that measure distance from the goal and a feature that measures proximity to obstacles. An example cost function over the whole configuration space is shown in Figure \ref{fig:cost_f} 
+
+	\begin{figure}
+	\centering
+	%\vspace{-3.3mm}
+	    \includegraphics[width=0.30\textwidth]{images/people.png}
+	%\vspace{-4mm}
+	  \caption{An instance of the randomised social navigation task used in the experiments. Arrows denote the position and orientation of people in the scene. The robot can be seen in the bottom right hand corner and the green box denotes the goal location.} \label{fig:exp_setting}
+	\end{figure}
+
+	\begin{figure}
+	\centering
+	%\vspace{-3.3mm}
+	    \includegraphics[width=0.30\textwidth]{images/cost_f.png}
+	%\vspace{-4mm}
+	  \caption{An instance of the cost function used to collect ground truthed data for our experiments. Red denotes \emph{low} cost, while purple denotes \emph{high} cost} \label{fig:cost_f}
+	\end{figure}
+	\subsection{Evaluation}
+
+	To evaluate the effectiveness of our algorithms we resort to both objective as well as subjective comparisons.
+
+	To objectively assess the quality of our algorithms we generate a dataset $D^{obj}$ by planning near-optimal paths from an initial configuration $s_o$ to a goal configuration $s_g$ under a ground truth cost function $c_{gt}()$ derived from respective ground truth weights $\mathbf{w}_{gt}$. As mentioned in section \ref{subsec:path_planning} a fully optimal path can only be derived only assymptotically in terms of either time in terms of the RRT$^*$, or resolution in the case of A$^*$. In practice however we found that planning for 60s using the RRT$^*$ algorithm achieves a path that is very close to optimal. This is concluded by the change in optimal path cost achieved if more sampling time is given to the algorithm. This ground truth dataset is extremmely useful for evaluation. For each path $\zeta$ generated by the learner we know its respective cost under the ground truth reward function simply through the inner product $\mathbf{w}_{gt}$ with the paths feature sums $\mathbf{F}(\zeta)$. Furthermore we can compute the cost difference between the generated path and the example path by,
+	\begin{equation}
+		Q(\zeta,\zeta_i,\mathbf{w}) = \mathbf{w}(F(\zeta)-F(\zeta_i)). \label{eq:obj_eval}
+	\end{equation} 
+	Assuming the demonstration path $\zeta_i$ is optimal under $\mathbf{w}$, means $Q(\zeta,\zeta_i,\mathbf{w})>=0$, although for the reasons mentioned at the begining of this section it is very hard to guarantee this. Equation \ref{eq:obj_eval} will be our main means of evaluating the performance of different algorithms.
+
+	Since one of our main contributions in this paper claims a speedup in learning time, we will also use the time per learning iteration as a means of objective evaluation. Although the speed of both RRT$^*$ and A$^*$ may very significantly across implementations, certain algorithmic characteristics do not, for example a higher grid resolution for A$^*$ will always result in increased planning time. For both algorithms we use vanilla implementations in Python. In fact all algorithms share similar functions and do not benefit from any kind of special optimisations appart from the one described in Section \ref{subsec:cached}.
+
+
+	If the dataset $D$ comes from human demonstrations, where the underlying cost function is unknown, then it is much harder to objectively evaluate performance. For this reason we will simply resort to visual comparisons of the demonstrated and generated paths.
+
+	\subsection{Results}
+
+	Our objective dataset $D^{obj}$ consists of 20 trajectories at random social situations within the configuration space shown in Figure \ref{fig:exp_setting}, using the cost function shown in Figure \ref{fig:cost_f}. Half of these trajectories make up the training dataset $D^{obj}_{train}$ and the other half the test dataset $D^{obj}_{train}$. After being trained on $D^{obj}_{train}$ the performance of a cost function is evaluated on $D^{obj}_{test}$ using \ref{eq:obj_eval}. We report both the mean and median across the different trajectories in the test and training sets, for every iteration in Figures \ref{fig:train_results} and \ref{fig:train_results}. Results are reported for four different planners. Results marked as RRT$^*$ refer to aproximate MMP using an RRT$^*$ planner with a planning time of 12s. note that this is a significantly lower planning time than the one used to generate the near optimal demonstration paths in $D^{obj}$. Results marked as Cached RRT$*$ refer to the algorithm proposed in Section \ref{subsec:cached} for $p=2500$, which is the amount of points that would typically be sampled in 12s of planning time. Finally we report results for A$^*$ planners of two different grid resolutions namely 0.8 and 0.3 meters.
+
+	Our first observation is that both methods that use RRT$^*$ as a planner perform better in all situations. This can be atributed to the fact that RRT$^*$ is not confined to work on a fixed grid allowing it to generate paths that are actually closer to optimal. We also observe that although the high resolution A$^*$ planner performs well in training it performs worse in testing. It is also worth noting that the aparent bad performance of the A$^*$ planners in Figure \ref{fig:train_cd_mean} can be atributed to bad performance with respect to one specific path. In this case it is perhaps more enlightening to look at the median values for performance.
+
+	Table \ref{tab:time} the average planning time per learning iteration and the total learning time for all algorithms. Comparing between leaening usign a normal RRT$^*$ and a cached RRT$^*$ we can see that the latter is much faster and seems to trade off none of the performance. Furthermore both algorithms are faster than A$^*$ on a fine grid, but much slower than A$^*$ on a coarse grid. Another important point is the large variance in planning time when in comes to A$^*$ at 0.3m grid resolution. At the start of learning the initial cost function is very simple and and only involves the distance from the goal location. Under this cost function planning is very quick, because a simple heuristic that simple takes into account the distance from the goal is a very good aproximation to the cost-to-go from a certain configuration to the end. As learning proceeds however and the cost function becomes more complex, this simple heuristic, although admisible, no longer faithfuly represents the cost-to-go. This requires the A$^*$ planner to explore much more states before an optimal path is found. We can see therefore that A$^*$ does not only face scale problems as the size of $S$ increases but also as the cost function becomes more complex. Luckily, the probabilistic nature of the RRT$^*$ makes it less suceptible to these pathologies.  
+
+\begin{figure}[tbh]
+	\centering
+%	\hspace{-5cm}
+      \hspace{-5mm}
+      \begin{subfigure}[b]{0.455\columnwidth}
+
+    \includegraphics[clip=true,width=1.25\textwidth]{images/cost_diff_med.png}
+    \caption{Median cost difference}
+    \label{fig:train_cd_med}
+  \end{subfigure}
+ % \hspace{5mm}
+ \hspace{5mm}
+  \begin{subfigure}[b]{0.455\columnwidth}
+    \includegraphics[clip=true,width=1.25\textwidth]{images/cost_diff.png}
+    \caption{Mean cost difference}
+    \label{fig:train_cd_mean}
+  \end{subfigure} 
+
+  %\vspace{-3mm}
+  \caption{Mean and median cost difference on the training set, for 15 iterations}
+  %\vspace{-3mm}
+  \label{fig:train_results}
+
+\end{figure}
+
+
+\begin{figure}[tbh]
+	\centering
+%	\hspace{-5cm}
+      \hspace{-5mm}
+      \begin{subfigure}[b]{0.455\columnwidth}
+
+    \includegraphics[clip=true,width=1.25\textwidth]{images/cost_diff_med_test.png}
+    \caption{Median cost difference}
+    \label{fig:test_cd_med}
+  \end{subfigure}
+ % \hspace{5mm}
+ \hspace{5mm}
+  \begin{subfigure}[b]{0.455\columnwidth}
+    \includegraphics[clip=true,width=1.25\textwidth]{images/cost_diff_test.png}
+    \caption{Mean cost difference}
+    \label{fig:test_cd_mean}
+  \end{subfigure} 
+
+  %\vspace{-3mm}
+  \caption{Mean and median cost difference on the test set, for 15 iterations}
+  %\vspace{-3mm}
+  \label{fig:test_results}
+
+\end{figure}
+
+	\begin{table}[]
+	\centering
+	\label{tab:time}
+	\begin{tabular}{|l|l|l|l|l|}
+	\hline
+	                        & A* 0.8m    & A* 0.3m      & RRT*  & Cache RRT* \\ \hline
+	Iteration (s) & 1.83(0.79) & 20.93(12.14) & 12(0) & 5.87(0.50)  \\ \hline
+	Learning (s) & 275.2      & 3140.6       & 1808  & 911.7       \\ \hline
+	\end{tabular}
+	\caption{Per iteration and total learning times for our proposed algorithms and the baselines}
+	\end{table}
 
 
 \bibliographystyle{IEEEtran}
