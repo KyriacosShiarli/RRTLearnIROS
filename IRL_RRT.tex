@@ -336,11 +336,11 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 \section{Experiments}
 	In Section \ref{subsec:ammp} we discussed how the original MMP algorithm can be applied to RRT$^*$ and in Section \ref{subsec:cached} we introdused a cached version of RRT$^*$ that allows faster learning. In this section we compare the performance of these two proposed algorithms against the original MMP algorithm, using A$^*$ search.
 	
-	Our experiments take place in the context of socially appropriate navigation. IRL has been widely used in this setting \cite{okallearning}, \cite{henry2010learning},\cite{vasquez2014inverse}, because it is usually very hard to hardcode the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports, museums, care centers and shopping malls (need citations). 
+	Our experiments take place in the context of socially appropriate navigation. IRL has been widely used in this setting \cite{okallearning}, \cite{henry2010learning}, \cite{vasquez2014inverse}, because it is usually very hard to hardcode the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports \cite{triebel2015spencer}, museums \cite{thrun1999minerva} and care centers \cite{shiarlis2015teresa}.
 	\subsection{Setting}
 	Our experiments take place in a randomly generated social environment, shown in Figure \ref{fig:exp_setting}. Every arrow in the figure represents a person's position and orientation. The robot is given the task of navigating from one point in the room to the other. While it is aware of the orientation and position of different people, it has no idea on how to prioritise reaching the target quickly, avoiding people and nearing obstacles, i.e., the cost function is unknown. Instead, the robot is given a number of demonstrations in the form of a dataset $D$. Each demonstration $\zeta_i$ comes as a set of $(x,y)$ positions of the robot in the configuration space and each demonstration takes place for a different random configuration of the social environment, i.e., the people are at different positions and orientations every time. The task of the robot is to, using $D$, extract a cost function based on different features of the environment, which in turn would allow it to behave socially in future tasks.
 
-	The features involved in our experiments include three different gaussian functions of different means and diagonal covariances around each person, three different functions that measure distance from the goal and a feature that measures proximity to obstacles. An example cost function over the whole configuration space is shown in Figure \ref{fig:cost_f} 
+	The features involved in our experiments include three gaussian functions of different means and diagonal covariances around each person, three different functions that measure distance from the goal and a feature that measures proximity to obstacles. An example cost function over the whole configuration space is shown in Figure \ref{fig:cost_f} 
 
 	\begin{figure}
 	\centering
@@ -378,7 +378,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 
 	Our first observation is that both methods that use RRT$^*$ as a planner perform better in all situations. This can be atributed to the fact that RRT$^*$ is not confined to work on a fixed grid allowing it to generate paths that are actually closer to optimal. We also observe that although A$_{0.3}^*$ performs better than A$_{0.8}^*$ in training it performs worse in testing. It is also worth noting that the aparent bad performance of the A$^*$ planners in Figure \ref{fig:train_cd_mean} can be atributed to bad performance with respect to one specific path. In this case it is perhaps more enlightening to look at the median values for performance.
 
-	Table \ref{tab:time} the average planning time per learning iteration and the total learning time for all algorithms. Comparing between learning using a normal RRT$^*$ and a cached RRT$^*$ we can see that the latter is much faster and seems to trade off none of the performance. Furthermore both algorithms are faster than A$_{0.3}^*$, but much slower than A$_{0.8}^*$. Another important point is the large variance in planning time when in comes to A$_{0.3}^*$. At the start of learning the initial cost function is very simple and and only involves the distance from the goal location. Under this cost function planning is very quick, because a simple heuristic that simple takes into account the distance from the goal is a very good aproximation to the cost-to-go from a certain configuration to the end. As learning proceeds however and the cost function becomes more complex, this simple heuristic, although admisible, no longer faithfuly represents the cost-to-go. This requires the A$^*$ planner to explore much more states before an optimal path is found. We can see therefore that A$^*$ does not only face scale problems as the size of $S$ increases but also as the cost function becomes more complex. Luckily, the probabilistic nature of the RRT$^*$ makes it less suceptible to these pathologies.  
+	Table \ref{tab:time} reports the the average planning time per learning iteration and the total learning time for all algorithms. Comparing between learning using a normal RRT$^*$ and a cached RRT$^*$ we can see that the latter is much faster without a trade off in performance. Furthermore both algorithms are faster than A$_{0.3}^*$, but much slower than A$_{0.8}^*$. Another important point is the large variance in planning time when in comes to A$_{0.3}^*$. At the start of learning the initial cost function is very simple and and only involves the distance from the goal location. Under this cost function planning is very quick, because a simple heuristic that simply takes into account the distance from the goal is a very good aproximation to the cost-to-go from a certain configuration to the end. As learning proceeds however and the cost function becomes more complex, this simple heuristic, although admisible, no longer faithfuly represents the cost-to-go. This requires the A$^*$ planner to expand much more states before an optimal path is found. We can see therefore that A$^*$ does not only face scale problems as the size of $S$ increases but also as the cost function becomes more complex. Luckily, the probabilistic nature of the RRT$^*$ makes it less suceptible to these pathologies.  
 
 \begin{figure}[tbh]
 	\centering
@@ -433,7 +433,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 
 	\begin{table}[]
 	\centering
-	\label{tab:time}
+
 	\begin{tabular}{|l|l|l|l|l|}
 	\hline
 	                        & A$_{0.8}^*$     & A$_{0.8}^*$       & RRT*  & Cache RRT* \\ \hline
@@ -441,6 +441,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 	Learning (s) & 275.2      & 3140.6       & 1808  & 911.7       \\ \hline
 	\end{tabular}
 	\caption{Per iteration and total learning times for our proposed algorithms and the baselines}
+	\label{tab:time}
 	\end{table}
 
 
