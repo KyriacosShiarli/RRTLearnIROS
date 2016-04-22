@@ -78,7 +78,7 @@ For these reasons, several researchers have proposed replacing the planning step
 
 In path planning, Rapidly Exploring Random Trees (RRTs) \cite{lavalle1998rapidly} are popular because they cope well with continuous an high-dimensional domains and can elegantly handle kinodynamic constraints. The RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially useful. However, the cost functions used by RRT$^*$ are typically simple and hand-coded.  Furthermore, to our knowledge, no methods have been developed to learn RRT$^*$ cost functions from demonstrations.
 
-In this paper, we present methods for inverse reinforcement learning of RRT$^*$ cost functions. Our methods require no additional planner assumptions other than those inherent in RRT$^*$, making them particularly easy to implement. We begin by showing that the sample-based nature of RRT$^*$ requires a novel formulation of the learning problem. We then formulate algorithms that allow these cost functions to be learned effectively. Finally, we evaluate our methods on real and simulated data from a social navigation scenario. 
+In this paper, we present methods for inverse reinforcement learning of RRT$^*$ cost functions. Specifically we modify Maximum Margin Planning to use RRT$^*$ as a planner and explain the implications of doing so. We then go on to propose a procedure that can speed up the learning time of these algorithms by eploiting the structure of the RRT$^*$ algorithm. Our methods require no additional planner assumptions other than those inherent in RRT$^*$, making them particularly easy to implement. Finally, we evaluate our methods on real and simulated data from a social navigation scenario. Our results demontrate clearly that our methods outperform methods that learn path planning cost functions for deterministic planners. This better performance is also achieved faster than previous methods. 
 
 \section{Related Work}
 
@@ -100,7 +100,7 @@ Our work, can also be viewed as a graph, or rather tree-based approach. Instead 
 We begin with background on path planning and inverse reinforcement learning for path planning.
 
 \subsection{Path Planning \label{subsec:path_planning}}
-Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_1,s_2,s_3$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_1$ to a goal configuration  $g =s_{l_{\zeta}}$. Whn the initial and goal configurations are implied, we refer to a path as simply $\zeta$.
+Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_1,s_2,s_3$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_1$ to a goal configuration  $g =s_{l_{\zeta}}$. When the initial and goal configurations are implied, we refer to a path as simply $\zeta$.
 
 Because there could be several paths to the goal, path planners typially employ a \emph{cost functional}, $C(\zeta)$ often defined as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$ is therefore the sum of the individual costs along the path, i.e.,
 \begin{equation}
@@ -151,7 +151,7 @@ The constraint is an inequality because $Z_{o,g}$ contains only paths available 
 Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to the example path $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. The full optimisation formulation of Maximum Margin Planning is as follows.
 
 \begin{equation}
-	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \tau_i \label{eq:mas_marg}
+	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \tau_i \label{eq:mas_marg}
 \end{equation}
 \begin{equation}
 	\text{s.t.} \quad C(\zeta^i_{o_i,g_i}) - \tau_i \leq \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta) \quad \forall i,
@@ -163,12 +163,12 @@ where $\tau_i$ are slacks that can be used to relax the constraints. Rearranging
 \end{equation}
 meaning that minimising,
 \begin{equation}
-	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained}
+	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained}
 \end{equation}
 is equivalent to minimizing \eqref{eq:mas_marg}, i.e., the slacks are tight.
 The minimum can be found by computing a subgradient and performing gradient descent on the above objective:
 \begin{equation}
-	\nabla_{\mathbf{w}} =\mathbf{w} +  \frac{\gamma}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\tilde{\zeta}^*_{o_i,g_i}), \label{eq:update1}
+	\nabla_{\mathbf{w}} =\mathbf{w} +  \frac{\lambda}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\tilde{\zeta}^*_{o_i,g_i}), \label{eq:update1}
 \end{equation}
 where,
 \begin{equation}
@@ -178,21 +178,21 @@ where,
 The inverse problem can therefore be seen as an iterative procedure, that first solves \eqref{eq:augmented_max} in the inner loop while keeping the weights constant. Based on that solution, it updates the weights using \eqref{eq:update1} in the outer loop. The weights at convergence represent the cost function that is used to plan the future behaviour of the agent. In \cite{ratliff2006maximum}, A$^*$ search was used for planning in the inner loop, assuming that the domain contained acyclic positive costs. In this paper, we make the same assumptions but develop methods that use RRT$^*$ for planning.
 
 \section{Method}
-	In this section we describe how feature sums are calculated for sampled based planners. We then go on to modify the maximum margin formulation to one that is appropriate for sample based planners. We explain the implications of this modifications and offer some insight as to their interpretation. Finally we propose an sampling based learning algorithm that leverages the nature of the RRT$^*$ to speed up the learning procedure.
-	\subsection{Feature Sums and Sampled Based Planners}
-		Feature sums, $F(\zeta)$, can be seen as the  `fingerprints' of paths, and their definition is of crucial importance in the inverse problem. When planning on a fixed graph, like in the case of MDPs or A$^*$ search, it is easy to define the feature sums as the \emph{edge} costs on the graph. Furthermore if planning in continous domains we may consider integrals along the path. In RRT's however the tree that is being built has neither a fixed structure, nor an analytical form. Thus, the first step towards learning RRT$^*$ cost functions from demonstration is to come up with a reasonable approximation of $F(\zeta)$ for a path. This approximation must be consistent with the definition of the cost for a configuration pair. One such definition for cost is as follows.
-		\begin{equation}
-			c(s_i,s_j) = \frac{c(s_i)+c(s_j)}{2}d_{s_i,s_j}
-		\end{equation}
-		Where $c(s_i)$ is a cost function defined over a single configuration and $d_{s_i,s_j}$ is a measure of distance between the two configurations. For example, if we consider configurations to be points in Eucledian space then $d_{s_i,s_j}$ can be the eucledian distance. Noting that the costs and features are related by \eqref{eq:inner_prod} for a single feature $f_k$ we have,
+	In this section modify the maximum margin formulation to one that is appropriate for sample based planners. We explain the implications of this modifications and offer some insight as to their interpretation. Finally we propose an sampling based learning algorithm that leverages the nature of the RRT$^*$ to speed up the learning procedure.
+	% \subsection{Feature Sums and Sampled Based Planners}
+	% 	Feature sums, $F(\zeta)$, can be seen as the  `fingerprints' of paths, and their definition is of crucial importance in the inverse problem. When planning on a fixed graph, like in the case of MDPs or A$^*$ search, it is easy to define the feature sums as the \emph{edge} costs on the graph. Furthermore if planning in continous domains we may consider integrals along the path. In RRT's however the tree that is being built has neither a fixed structure, nor an analytical form. Thus, the first step towards learning RRT$^*$ cost functions from demonstration is to come up with a reasonable approximation of $F(\zeta)$ for a path. This approximation must be consistent with the definition of the cost for a configuration pair. One such definition for cost is as follows.
+	% 	\begin{equation}
+	% 		c(s_i,s_j) = \frac{c(s_i)+c(s_j)}{2}d_{s_i,s_j}
+	% 	\end{equation}
+	% 	Where $c(s_i)$ is a cost function defined over a single configuration and $d_{s_i,s_j}$ is a measure of distance between the two configurations. For example if we consider configurations to be points in Eucledian space then $d_{s_i,s_j}$ can be the eucledian distance. Noting that the costs and features are related by \eqref{eq:inner_prod} for a single feature $f_k$ we have,
 
-		\begin{equation}
-			f_k(s_i,s_j) = \frac{f(s_i)+f(s_j)}{2}d_{s_i,s_j}
-		\end{equation}
-		Following this definition feature sum calculation along a candidate path is trivial,
-		\begin{equation}
-			F(\zeta) = \sum_{i=0}^{\zeta_l-1} \frac{\mathbf{f}(s_i)+\mathbf{f}(s_{i+1})}{2}d_{s_i,s_{i+1}}
-		\end{equation}
+	% 	\begin{equation}
+	% 		f_k(s_i,s_j) = \frac{f(s_i)+f(s_j)}{2}d_{s_i,s_j}
+	% 	\end{equation}
+	% 	Following this definition feature sum calculation along a candidate path is trivial,
+	% 	\begin{equation}
+	% 		F(\zeta) = \sum_{i=0}^{\zeta_l-1} \frac{\mathbf{f}(s_i)+\mathbf{f}(s_{i+1})}{2}d_{s_i,s_{i+1}}
+	% 	\end{equation}
 
 
 
@@ -207,7 +207,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 	Assuming that $\tilde{Z}_{o_i,g_i}$ is constant can rewrite the unconstrained objective function of Equation \eqref{eq:unconstrained} as:
 
 	\begin{equation}
-	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\gamma}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in \tilde{Z}_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained_rrt}
+	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in \tilde{Z}_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained_rrt}
 	\end{equation}
 	This gives rise to a similar learning procedure to before with the crucial difference that the planning step is executed by an RRT$*$ planner and not a deterministic one, like A$^*$. An important implication of this is that while before the set $Z_{o_i,g_i}$ was fixed for all iterations of the learning, now $\tilde{Z}_{o_i,g_i}$ changes every time we invoke the sample based planner. I.e., although for the sake of mathematical convienience we have assumed $\tilde{Z}_{o_i,g_i}$ to be constant, in practice it is not. As a result we can interpret the sample-based planning procedure of RRT$*$ as a smart way of sampling \emph{constraints} that we want our cost function to satisfy. Ofcourse this constraint sampling might actually be beneficial since it allows us to sample paths from the continuous space and does not confine us to a fixed grid.
 
@@ -218,11 +218,11 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 
 
 \subsection{Cached AMMP for faster learning \label{subsec:cached}}
-	In Section \ref{subsec:inverse_problem} we explained that learning cost function for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in a direction that would bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$ planning can be a costly procedure, and might render learning impractical. In this section we propose a method that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
+	In Section \ref{subsec:inverse_problem} we explained that learning cost functions for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in a direction that would bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$, planning can be a costly procedure, and might render learning impractical. In this section we propose a method that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
 
 	Two of the most costly operations of the RRT$^*$ argorithm are, 1). Finding the nearest neighbour to a newly sampled point and 2). Finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However these procedures of the algorithm are completely independent of the cost function that the planner is using. This means that the RRT$^*$ algorithm can be split in two separate independent steps. 
 
-	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, $p$, the initial point $s_init$ and the steer step size $\eta$. For each of the randomly sampled points $s_{rand}$ we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is??. The points $s_{new}$,$s_{nerest}$ and the set $S_{near}$ are stored together in the map \texttt{pointCache}, which is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a preprocessing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
+	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, $p$, the initial point $s_{init}$ and the steer step size $\eta$. For each of the randomly sampled points $s_{rand}$ we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is??. The points $s_{new}$,$s_{nerest}$ and the set $S_{near}$ are stored together in the map \texttt{pointCache}, which is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a preprocessing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
 
 
 
@@ -307,7 +307,7 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 	\STATE $F_i \gets \texttt{FeatureSums}(\zeta)$
 	\STATE $\nabla_{\mathbf{w}} \gets \nabla_{\mathbf{w}} + \tilde{F}_i - F_i $
 	\ENDFOR
-	\STATE $\nabla_{\mathbf{w}} \gets \lambda\mathbf{w} + \nabla_{\mathbf{w}} / |D|$
+	\STATE $\nabla_{\mathbf{w}} \gets \mathbf{w} + \frac{\lambda}{|D|}\nabla_{\mathbf{w}} $
 	\STATE $\mathbf{w} \gets \mathbf{w} - \delta\nabla_{\mathbf{w}} $
 	\UNTIL{convergence}
 	\RETURN $V,E$
