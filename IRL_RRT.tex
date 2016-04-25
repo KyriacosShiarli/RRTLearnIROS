@@ -60,8 +60,8 @@ shimon.whiteson@cs.ox.ac.uk
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Inverse Reinforcement Learning for path planning is a field of recent interest in robotics. Using such methods roboticists can learn cost functions for difficult tasks from demonstration, instead of hard-coding them. However a lot of the work in this field faces limitations from the underlying planning methods that are assumed. In this paper we introduce the Rapidly Exploring Learning Tree (RLT), a learning algorithm that allows the cost functions of Rapidly Exploring Random Trees (RRT) to be learned from demonstration. By doing so we open up the posibility of performing inverse planning on more complex tasks. We begin with an aproximation of the Maximum Margin Planning learning method and explain how this allows RRT$^*$ cost functions to be learned. We go on to propose a fast learning method that exploits the nature of RRT$^*$. The resulting algorithms are tested against their deterministic graph-based counterparts, in a social navigation scenario, demonstrating improvements in both speed and performance.
-
+Inverse Reinforcement Learning (IRL) for path planning enables robots to learn cost functions for difficult tasks from demonstration, instead of hard-coding them. However, IRL methods face practical limitations that stem from their reliance on Markov decision process planners.
+In this paper, we propose Rapidly Exploring Learning Trees (RLT), which learns the cost functions of Rapidly Exploring Random Trees (RRT) from demonstration, thereby making inverse learning methods applicable to more complex tasks. Our approach extends the Maximum Margin Planning to work with RRT$^*$ cost functions. Furthermore, we propose a caching scheme that greatly reduces the computational cost of this approach. Experimental results on real and simulated data from a social navigation scenario show that RLT achieves better performance at lower computational cost than existing methods.
 
 \end{abstract}
 
