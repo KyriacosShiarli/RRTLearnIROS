@@ -3,6 +3,7 @@
 %        1         2         3         4         5         6         7         8
 
 \documentclass{article}  % Comment this line out if you need a4paper
+
 \usepackage{ijcai16}
 \usepackage{times}
 \usepackage{algorithmic}
@@ -231,6 +232,8 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 
 
 	\begin{algorithm}
+	\algsetup{linenosize=\tiny}
+  	\scriptsize
 	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
 	\label{alg:rrt_cache}
 	\begin{algorithmic}[1]
@@ -253,6 +256,8 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 
 
 	\begin{algorithm}
+	\algsetup{linenosize=\tiny}
+  	\scriptsize
 	\caption{\texttt{planCachedRRT$^*$}($P$,$s_{init}$,$c()$)}
 	 \label{alg:plan_cached}
 	\begin{algorithmic}[1]
@@ -289,6 +294,8 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 	The full Cached Rapidly Exploring Learning Tree algorithm (RLT$^*$-C) procedure to learn RRT$^*$ cost functions from demonstration is described in Algorithm \ref{alg:ammp}. First we initialise the weights, either randomly or using a cost function that simply favours shortest paths. Then, for each datapoint $\zeta_i$ we calculate feature sums and run \texttt{cacheRRT}. The main learning loop involves cycling through all datapoints and finding the best path under a loss augmented cost function. The feature sums of this path are calculated and subsequently the difference with the demonstrated feature sums is computed. At the end of each iteration an average gradient is calculated and the cost function is updated. At convergence the learned weights are returned.
 
 	\begin{algorithm}
+	 \algsetup{linenosize=\tiny}
+  	\scriptsize
 	\caption{\texttt{RLT$^*$-C}($D,p,\eta,\lambda,\delta$)\label{alg:ammp}}
 	\begin{algorithmic}[1]
 	\STATE $\mathbf{w} \gets \texttt{initialiseWeights}$
@@ -352,21 +359,23 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 
 	\begin{figure}[tbh]
 %	\hspace{-5cm}
-      \begin{subfigure}[b]{0.435\columnwidth}
 
-    \includegraphics[width=0.9\textwidth]{images/people.png}
+      \begin{subfigure}[b]{0.435\columnwidth}
+	\hspace{5mm}
+    \includegraphics[width=0.7\textwidth]{images/people.png}
     \caption{Example setting }
     \label{fig:exp_setting}
   \end{subfigure}
   \hspace{10mm}
   \begin{subfigure}[b]{0.435\columnwidth}
-    \includegraphics[width=0.9\textwidth]{images/cost_f.png}
+  \hspace{4mm}
+    \includegraphics[width=0.7\textwidth]{images/cost_f.png}
     \caption{Cost function}
     \label{fig:cost_f}
   \end{subfigure} 
 
   %\vspace{-3mm}
-  \caption{(a) An instance of the randomised social navigation task used in the experiments. Arrows denote the position and orientation of people in the scene. The robot is in the left hand side of the map and the green box in the bottom right denotes the goal location. (b) The corresponding cost function for the random scenario. Red denotes \emph{low} cost, while purple denotes \emph{high} cost}.
+  \caption{(a) An instance of the randomised social navigation task used in the experiments. Arrows denote the position and orientation of people in the scene. The robot is in the left hand side of the map and the green box in the bottom right denotes the goal location. (b) The corresponding cost function for the random scenario. Red denotes \emph{low} cost, while purple denotes \emph{high} cost.}
   %\vspace{-3mm}
   \label{fig:setting}
   \end{figure}
