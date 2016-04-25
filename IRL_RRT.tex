@@ -61,8 +61,8 @@ shimon.whiteson@cs.ox.ac.uk
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{abstract}
-Inverse Reinforcement Learning for path planning is a field of recent interest in robotics. Using such methods roboticists can learn cost functions for difficult tasks from demonstration, instead of hard-coding them. However a lot of the work in this field faces limitations from the underlying planning methods that are assumed. In this paper we introduce the Rapidly Exploring Learning Tree (RLT), a learning algorithm that allows the cost functions of Rapidly Exploring Random Trees (RRT) to be learned from demonstration. By doing so we open up the posibility of performing inverse planning on more complex tasks. We begin with an aproximation of the Maximum Margin Planning learning method and explain how this allows RRT$^*$ cost functions to be learned. We go on to propose a fast learning method that exploits the nature of RRT$^*$. The resulting algorithms are tested against their deterministic graph-based counterparts, in a social navigation scenario, demonstrating improvements in both speed and performance.
-
+Inverse Reinforcement Learning (IRL) for path planning enables robots to learn cost functions for difficult tasks from demonstration, instead of hard-coding them. However, IRL methods face practical limitations that stem from their reliance on Markov decision process planners.
+In this paper, we propose Rapidly Exploring Learning Trees (RLT), which learns the cost functions of Rapidly Exploring Random Trees (RRT) from demonstration, thereby making inverse learning methods applicable to more complex tasks. Our approach extends the Maximum Margin Planning to work with RRT$^*$ cost functions. Furthermore, we propose a caching scheme that greatly reduces the computational cost of this approach. Experimental results on real and simulated data from a social navigation scenario show that RLT achieves better performance at lower computational cost than existing methods.
 
 \end{abstract}
 
@@ -72,44 +72,45 @@ Inverse Reinforcement Learning for path planning is a field of recent interest i
 
 Learning from demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can avoid the need for tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely inverse optimal control (IOC) \cite{kalman1964linear} and inverse reinforcement learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
 
-Cost functions tend to be more general and robust to changes in the environment. For example, if the friction in a manipulator's joints changes. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succint representations of the aims of the agent \cite{abbeel2004apprenticeship}. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
+Cost functions tend to be more general and robust to changes in the environment such as friction in a manipulator's joints. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succinct representations of the aims of the agent \cite{abbeel2004apprenticeship}. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
 
 However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which is typically impractical in robotics, for several reasons.  Firstly, an MDP assumes full observability. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and high-dimensional domains. Finally, the lack of scalability and the assumption of full observability prohibit the natural modeling of important factors such as kinodynamic constraints. 
 
 For these reasons, several researchers have proposed replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP) \cite{ratliff2006maximum} uses $A^*$ search for planning. This avoids the need to do all the planning in advance, as is typical when solving an MDP. It also avoids the need to model all aspects of the environment since the robot can quickly replan its trajectory to account for uncertainty. However, deterministic search methods such as A$^*$ require discretisation of the state space, and quickly run into scalability problems as the discretisation becomes finer. Furthermore, this discretisation again ignores kinodynamic constraints.
 
-In path planning, Rapidly Exploring Random Trees (RRTs) \cite{lavalle1998rapidly} are popular because they cope well with continuous and high-dimensional domains and can elegantly handle kinodynamic constraints. The RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially useful. However, the cost functions used by RRT$^*$ are typically simple and hand-coded.  Furthermore, to our knowledge, no methods have been developed to learn RRT$^*$ cost functions from demonstrations.
+In path planning, Rapidly Exploring Random Trees (RRTs) \cite{lavalle1998rapidly} are popular because they cope well with continuous and high-dimensional domains and can elegantly handle kinodynamic constraints. The RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially effective. However, the cost functions used by RRT$^*$ are typically simple and hand-coded and, to our knowledge, no methods have been developed to learn RRT$^*$ cost functions from demonstrations.
 
-In this paper, we present methods for inverse reinforcement learning of RRT$^*$ cost functions. Specifically we modify Maximum Margin Planning to use RRT$^*$ as a planner and explain the implications of doing so. We then go on to propose a procedure that can speed up the learning time of these algorithms by eploiting the structure of the RRT$^*$ algorithm. Our methods require no additional planner assumptions other than those inherent in RRT$^*$, making them particularly easy to implement. Finally, we evaluate our methods on real and simulated data from a social navigation scenario. Our results demontrate clearly that our methods outperform methods that learn path planning cost functions for deterministic planners. This better performance is also achieved faster than previous methods. 
+In this paper, we propose Rapidly Exploring Learning Trees (RLT), which learns RRT$^*$ cost functions from demonstration. Specifically we modify Maximum Margin Planning to use RRT$^*$ as a planner. Furthermore, we propose a caching scheme that greatly reduces the computational cost of this approach. RLT requires no additional planner assumptions other than those inherent in RRT$^*$, making it particularly easy to implement. 
+
+We evaluate RLT on real and simulated data from a social navigation scenario. The results demonstrate that RLT achieves better performance at lower computational cost than methods that learn path planning cost functions for deterministic planners.
 
 \section{Related Work}
 
 \sw{General IRL related work here.}
 
-Substantial research has applied IRL to robotics \cite{henry2010learning},\cite{abbeel2008apprenticeship}, \cite{vasquez2014inverse}. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space. This introduces several key limitations. First, the size of the state-action space encountered in robotics is often prohibitive for such models. Second, the specific kinodynamic constraints of the robot cannot be easily be expressed by such representations, as they introduce non-Markovian dynamics. 
+Substantial research has applied IRL to robotics \cite{henry2010learning,abbeel2008apprenticeship,vasquez2014inverse}. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space. This introduces several key limitations. First, the size of the state-action space encountered in robotics is often prohibitive for such models. Second, the specific kinodynamic constraints of the robot cannot be easily be expressed by such representations, as they introduce non-Markovian dynamics. 
 
 % \ks{Depending on the state-action space discretisation, past actions can infuence how easy it is to move to any a subsequent state. However the transition function only considers only one action in the past, and it is therefore an expectation over possible past configurations. As a result it tends to give the wrong probability distribution over next states for the actual physical system. Do I have to explain this in detail? Maybe Joao has a citation from his research?}
 
-To apply IRL to more realistic situations, researchers usually try to replace the MDP model while retaining the main idea behind IRL, i.e., learning the underlying cost function of a planner using data from demonstrations. 
- In \cite{ziebart2010modelingthesis} for example the Maximum Entropy IRL method was shown to work in domains of linear continouous dynamics with the optimal controller being a Linear-Quadratic Regulator. Since linear dynamics are hard to come by in robotics, in \cite{2012-cioc} locally linear aproximations are considered. These bring about locally consistent rewards, and achieve good performance in a range of tasks that were previously too hard for MDPs. However the optimisation of the cost function using such planners can never be guaranteed to be optimal. As our method is based on an RRT$^*$ planner it comes with the guarantee of asymptotic optimality.
+To apply IRL to more realistic situations, researchers usually try to replace the MDP model while retaining the main idea behind IRL, i.e., learning the underlying cost function of a planner using data from demonstrations. Maximum Entropy IRL \cite{ziebart2010modelingthesis} works in domains with linear continuous dynamics with the optimal controller being a Linear-Quadratic Regulator. Since linear dynamics are hard to come by in robotics, \cite{2012-cioc} considers locally linear aproximations. These bring about locally consistent rewards and achieve good performance in a range of tasks that were previously too hard for MDPs. However, the optimisation of the cost function using such planners is not guaranteed to be optimal. As our method is based on an RRT$^*$ planner, it is asymptotically optimal.
 
-Other approaches to the problem use hybrid planners. Inverse Optimal Heuristic Control (IOHC) \cite{ratliff2009inverse} models the long term goals of the agent as a coarse state MDP, to ensure tractability, while using supervised learning to determine the local policy of the agent at each state. Graph-Based IOC \cite{byravan2015graph} uses discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techinques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is shown to be effective in robotic manipulation where the number of degrees of freedom would otherwise pose problems for MDPs. While effective, these methods employ complex and domain specific planning formulations whose implementation might be undesirable for other robotics tasks. The method presented here employs widely used planners, making it versatile and easy to implement. 
+Other approaches to the problem use hybrid planners. Inverse Optimal Heuristic Control \cite{ratliff2009inverse} models the long-term goals of the agent as a coarse state MDP, to ensure tractability, while using supervised learning to determine the local policy of the agent at each state. Graph-Based IOC \cite{byravan2015graph} uses discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techniques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is effective in robotic manipulation tasks with many degrees of freedom.  However, these methods employ complex and domain-specific planning formulations that are not suitable for all robotics tasks. The method presented here employs widely used planners, making it versatile and easy to implement. 
 
-Another more recent graph-based concept is that of adaptive state graphs used in \cite{okallearning}. In this work the authors build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. 
+Another more recent graph-based concept is that of Adaptive State Graphs \cite{okallearning}, which build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. \sw{Why is that bad?}
 
-Our work, can also be viewed as a graph, or rather tree-based approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, we build a controller \emph{tree} on the fly.
+RLT can also be viewed as a graph-based, or rather tree-based, approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, RLT builds a controller tree on the fly.
 
 
 \section{Background}
 We begin with background on path planning and inverse reinforcement learning for path planning.
 
 \subsection{Path Planning \label{subsec:path_planning}}
-Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_1,s_2,s_3$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_1$ to a goal configuration  $g =s_{l_{\zeta}}$. When the initial and goal configurations are implied, we refer to a path as simply $\zeta$.
+Path planning occurs in a space $\mathcal{S}$ of possible configurations of the robot. A configuration $s \in \mathcal{S}$ is usually continuous, and often represents spatial quantities such as position and orientation. A path planner seeks an obstacle-free path $\zeta_{o,g} = (s_1,s_2,s_3$ $\ldots,s_{l_{\zeta}}) $ of length $l_{\zeta}$, from an initial configuration $o = s_1$ to a goal configuration  $g =s_{l_{\zeta}}$. When the initial and goal configurations are implied, we refer to a path as $\zeta$.
 
-Because there could be several paths to the goal, path planners typially employ a \emph{cost functional}, $C(\zeta)$ often defined as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$ is therefore the sum of the individual costs along the path, i.e.,
+Because there could be several paths to the goal, path planners typically employ a \emph{cost functional}, $C(\zeta)$ often defined as the sum of the costs between two subsequent configurations in a path $c(s_i,s_j)$. The total cost $C(\zeta)$ is therefore the sum of the individual costs along the path, i.e.,
 \begin{equation}
 	C(\zeta) = \sum_{i=0}^{l_{\zeta}-1} c(s_i,s_{i+1}).
-\end{equation}
+\end{equation} \sw{Shouldn't it be $i=1$?}
 This cost functional is similar to the one encountered in optimal control as well as to value functions used in reinforcement learning. Given the cost functional, the path planner seeks an optimal path $\zeta^*$, which satisfies,
 \begin{equation}
  	\zeta^*_{o,g} = \argmin_{\zeta_{o,g} \in Z_{o,g}} C(\zeta), \label{eq:back_plan}
@@ -118,15 +119,15 @@ where $Z_{o,g}$ is the set of all possible paths such that $s_1 = o, s_{l_\zeta}
 
 Many path planning algorithms discretise $\mathcal{S}$ and use graph search algorithms like $A^*$ to find the optimal path. Under mild assumptions, these approaches are guaranteed to find the best path on the graph, but not in $\mathcal{S}$. However, they scale poorly in the size of $\mathcal{S}$, as larger and larger graphs are required. Furthermore, such methods do not address kinodynamic constraints, i.e., they assume that every configuration on the graph is accessible from a neighbouring one. 
 
-These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. As a result, this tree can be grown in a way that respects kinodynamic constraints. Furthermore, a sampled-based approach can quickly find good, but not optimal, paths in large configuration spaces, while avoiding obstacles.
+These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. This tree can be grown in a way that respects kinodynamic constraints. Furthermore, a sampled-based approach can quickly find good, but not optimal, paths in large configuration spaces.
 
 %  RRT$^*$ is also asymptotically optimal, i.e., it is guranteed to find an optimal path in $\mathcal{S}$ as the sampling time goes to infinity. Many variants of RRT$^*$ provide improved performance and faster convergence in practice by, for example, heuristically shriking the sampling space \cite{gammell2014informed}.
 
 % The most significant difference between A$^*$ and RRT$^*$ is that while former is deterministic, the latter is probabilistic. It is important to understand how this distinction affects learning.
 
-In terms of the notation we have introduced, A$^*$ is capable of achieving the minimisation of \eqref{eq:back_plan} for a set $Z_{o,g}$ that is determined by its resolution (discretisation). RRT$^*$ on the other hand, for a given time budget T is capable of finding the maximum of a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$ but in this case $Z_{o,g}$ is continouous and not restricted by any type of discretisation. Furthermore as $T \rightarrow \infty$ the RRT$^*$ performs a minimisation over $Z_{o,g}$, i.e., it is asymptotically optimal. Intuitively, the RRT$^*$ is asymptotically optimal as a function of sampling time and A$^*$ is asymptotically optimal as a function of resolution. This distinction will become very important when we attempt to learn cost functions for these planners in the next section.
+A$^*$ can solve \eqref{eq:back_plan} for a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$ that is determined by its resolution (discretisation). RRT$^*$, for a given time budget T, also minimises a subset but in this case $\tilde{Z}_{o,g}$ is determined by the randomly sampled points. As $T \rightarrow \infty$, RRT$^*$ minimises over the entire $Z_{o,g}$, i.e., it is asymptotically optimal. In other words, the RRT$^*$ is asymptotically optimal as a function of sampling time and A$^*$ is asymptotically optimal as a function of resolution. %This distinction will become very important when we attempt to learn cost functions for these planners in the next section.
 
-\subsection{Inverse Reinforcement Learning for Path Planning \label{subsec:inverse_problem}}
+\subsection{IRL for Path Planning \label{subsec:inverse_problem}}
 Path planning involves finding a (near) optimal path to the goal given a cost function. In the inverse problem, we are given example paths and must find the cost function for which these paths are (near) optimal.  The example paths comprise a dataset $\mathcal{D} = (\zeta^1_{o_1,g_1},\zeta^2_{o_2,g_2}...\zeta^D_{o_D,g_D})$ where $\zeta^i_{o_i,g_i}$ is an example path with initial and final configurations $o_i,g_i$ respectively. We assume the unknown cost function is of the form,
 \begin{equation}
 	c(s_i,s_j) = \mathbf{w}^T \mathbf{f}(s_i,s_j), \label{eq:inner_prod}
@@ -143,16 +144,13 @@ While many formulations of the inverse problem exist, the general idea is to fin
 \begin{equation}
 	C(\zeta^i_{o_i,g_i}) \leq  C(\zeta) \quad \forall \zeta \in Z_{o_i,g_i}  \quad \forall i. \label{eq:const1}
 \end{equation}
-
-The set $Z_{o_i,g_i}$ can be very large, however if we have access to an optimisation procedure like the one in in Equation \eqref{eq:back_plan} it is enough to satisfy, 
-
-\begin{equation}
-	C(\zeta^i_{o_i,g_i}) \leq \min_{\zeta_{o_i,g_i} \in Z_{o_i,g_i}} C(\zeta) \quad \forall i, \label{eq:const}
-\end{equation}
-since all other paths are guaranteed to have a larger cost than the minimum.
 The constraint is an inequality because $Z_{o,g}$ contains only paths available to the planner and thus may not include the example path $\zeta^i_{o_i,g_i}$.
+$Z_{o_i,g_i}$ can be large but if we have an optimisation procedure that solves \eqref{eq:back_plan}, it is enough to satisfy, 
+\begin{equation}
+	C(\zeta^i_{o_i,g_i}) \leq \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) \quad \forall i, \label{eq:const}
+\end{equation}
 
-Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to the example path $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. The full optimisation formulation of Maximum Margin Planning is as follows.
+Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. The full optimisation formulation of Maximum Margin Planning is as follows.
 
 \begin{equation}
 	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \tau_i \label{eq:mas_marg}
@@ -163,13 +161,13 @@ Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \e
 where $\tau_i$ are slacks that can be used to relax the constraints. Rearranging the inequality in terms of the slacks we get:
 
 \begin{equation}
-	 \quad C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta)  \leq \tau_i  \quad \forall i,
+	 \quad C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) + L_i(\zeta)  \leq \tau_i  \quad \forall i.
 \end{equation}
-meaning that minimising,
+Consequently, the $\mathbf{w}$ minimising:
 \begin{equation}
-	\argmin_{\mathbf{w}} \big[ \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big]. \label{eq:unconstrained}
+	\frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \big( C(\zeta^i_{o_i,g_i}) - \min_{\zeta \in Z_{o_i,g_i}}\big(C(\zeta) + L_i(\zeta)\big) \big) \big. \label{eq:unconstrained}
 \end{equation}
-is equivalent to minimizing \eqref{eq:mas_marg}, i.e., the slacks are tight.
+is equivalent \eqref{eq:mas_marg}, i.e., the slacks are tight.
 The minimum can be found by computing a subgradient and performing gradient descent on the above objective:
 \begin{equation}
 	\nabla_{\mathbf{w}} =\mathbf{w} +  \frac{\lambda}{D} \sum_{i=0}^D F(\zeta^i_{o_i,g_i}) - F(\tilde{\zeta}^*_{o_i,g_i}), \label{eq:update1}
