@@ -382,8 +382,10 @@ We also measure the time per iteration of each learning algorithm.  All algorith
 
 	Our dataset $D$ consists of 20 trajectories at random social situations within the social environment shown in Figure \ref{fig:exp_setting}, using the cost function shown in Figure \ref{fig:cost_f}. Half of these trajectories make up the training dataset $D_{train}$ and the other half the test dataset $D_{test}$. After being trained on $D_{train}$, the performance of a cost function is evaluated on $D_{test}$ using \eqref{eq:obj_eval}. The process is repeated four times for the same dataset but with different random compositions of $D_{train}$ and $D_{test}$. We report both the mean and standard error across the different trajectories in the test and training sets, for each iteration in Figures \ref{fig:train_results} and \ref{fig:test_results}. 
 
-We report results for RLT$^*$, RLT$^*$ without caching, and MMP with A$^*$ at grid resolutions of 0.8 and 0.3 metres.  For RLT$^*$, we set the number of sampled points $p=2500$. For RLT$^*$ without caching, we cap planning at 12$s$, which is about how long RRT$^$ plans for when $p=2500$.  Note that this is much less planning time than the 60$s$ used to generate the demonstrations.
- All learning algorithms were initialised using a cost function that only favours shorterst paths.
+We report results for RLT$^*$, RLT$^*$ without caching, and MMP with A$^*$ at grid resolutions of 0.8 and 0.3 metres.  For RLT$^*$, we set the number of sampled points $p=2500$. For RLT$^*$ without 
+caching, we cap planning at 12$s$, which is about how long RRT$^*$ plans for when $p=2500$.  Note 
+that this is much less planning time than the 60$s$ used to generate the demonstrations.
+ All learning algorithms were initialised using a cost function that only favours shortest paths.
 
 The results show that both versions of RLT$^*$ always outperform both versions of MMP with A$^*$. This can be attributed to the fact that the underlying RRT$^*$ planner is not confined to work on a fixed grid, allowing it to generate paths that are closer to optimal. This is further reinforced by the increased performance as the grid resolution decreases allowing MMP$_{0.3}$ to approach the performance of RLT$^*$. Standard error rates are similar across methods.
 
@@ -410,7 +412,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
   \end{subfigure} 
 
   %\vspace{-3mm}
-  \caption{Train and test set average cost difference, for 15 iterations. Error bars represent standard error over four independent runs on shuffled versions of the data. \sw{Update legend with new method names.}
+  \caption{Train and test set average cost difference, for 15 iterations. Error bars represent standard error over four independent runs on shuffled versions of the data. \sw{Update legend with new method names.}}
   %\vspace{-3mm}
   \label{fig:results}
 \end{figure}
