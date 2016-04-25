@@ -211,7 +211,39 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 	\end{equation}
 	This gives rise to an approach we call Approximate Maximum Margin Planning (AMMP), which is similar  to the one described in Section \ref{subsec:inverse_problem}, with the crucial difference that the planning step is executed by a sample-based planner and not a deterministic one, like A$^*$. An important consequence is that $\tilde{Z}_{o_i,g_i}$ now changes every time we invoke the sample-based planner. As a result, AMMP can be thought of as a smart way of sampling the \emph{constraints} that we want our cost function to satisfy. 
 
+
 \subsection{Rapidly Exploring Learning Trees \label{subsec:cached}}
+
+A simple way to construct a concrete algorithm from AMMP is to use RRT$^*$ as the sample-based planner.  However, this results in a computationally expensive algorithm, which calls the planner $I\times|D|$ times over $I$ iterations given a dataset of size $|D|$.  Since planning is typically expensive, it is crucial to find a more efficient approach.
+
+In this section, we propose Rapidly Exploring Learning Trees (RLT$^*$), which implements AMMP with an RRT$^*$ planner but uses a caching scheme to achieve computational efficiency.
+
+Two of the most costly operations of RRT$^*$ are 1) finding the nearest neighbour to a newly sampled point and 2) finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However, a key observation is that neither of these procedures depend on the cost function used by the planner. Thus,  RRT$^*$ can be split in two independent steps. 
+
+	The first step is described in Algorithm \ref{alg:rrt_cache}, which takes as input $p$, the number of points to randomly sample from free space; $s_{init}$, the initial point; and $\eta$, the steer step size. For each randomly sampled point $s_{rand}$, we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set $V$. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimensionality of $S$, and $\gamma_{RRT^*}$ is a constant based on the volume of free space (see \cite{karaman2011sampling}). The points $s_{new}$, $s_{nearest}$ and the set $S_{near}$ are stored together in the map $P$, which we call the \emph{point cache}, and is returned at the end of the procedure. This algorithm turns the sampling process of RRT$^*$  into a preprocessing step. Consequently, the expensive \texttt{Nearest} and \texttt{Near} procedures only need to be repeated $|D|$ times instead of $I\times|D|$ times.
+
+
+	\begin{algorithm}
+	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
+	\label{alg:rrt_cache}
+	\begin{algorithmic}[1]
+	\STATE $P \gets \emptyset$ \hfill \COMMENT{Initialise the point cache}
+	\STATE $V \gets {s_{init}}$
+	\FOR{$i=0 \dots p $}
+	\STATE $s_{rand} \gets SampleFree_i$
+	\STATE $s_{nearest} \gets \texttt{Nearest}(V,s_{rand})$
+	\STATE $s_{new} \gets \texttt{Steer}(s_{nearest},s_{rand})$
+	\STATE $S_{near} \gets \texttt{Near}(V,{s_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
+	\STATE $V\gets V \cup s_{new}$
+	\STATE $P \gets P \cup \{s_{new},S_{near}\}$
+	\ENDFOR
+	\RETURN $P$
+
+	\end{algorithmic}
+	\end{algorithm}
+
+The output of Algorithm \ref{alg:rrt_cache} is input to Algorithm \ref{alg:plan_cached}, which resembles wiring and re-wiring procedures in RRT$^*$ \cite{karaman2011sampling}, and returns a minimum cost path to the goal. An important difference, however, is that the vertices of the tree and their neighbours at each iteration are already known and contained within the point cache. This speeds computation while keeping consistency between the planners used during learning and final execution. As learning proceeds and the cost function changes, so does the wiring of this tree; however, the points involved do not change.
+
 
 	\begin{algorithm}
 	\algsetup{linenosize=\tiny}
@@ -249,39 +281,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 	\end{algorithmic}
 	\end{algorithm}
 
-A simple way to construct a concrete algorithm from AMMP is to use RRT$^*$ as the sample-based planner.  However, in Section \ref{subsec:inverse_problem} we explained that learning cost functions for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in a direction that would bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$, planning can be a costly procedure, and might render learning impractical. In this section we propose a method that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
-
-	Two of the most costly operations of the RRT$^*$ argorithm are, 1). Finding the nearest neighbour to a newly sampled point and 2). Finding the radius-neighbours of a newly created vertex in the tree \cite{karaman2011sampling}. However these procedures of the algorithm are completely independent of the cost function that the planner is using. This means that the RRT$^*$ algorithm can be split in two separate independent steps. 
-
-	The first step is described in Algorithm \ref{alg:rrt_cache}. Input to this procedure how many points to randomly sample from the free space, $p$, the initial point $s_{init}$ and the steer step size $\eta$. For each of the randomly sampled points $s_{rand}$ we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set V. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimentionality of $S$, and $\gamma_{RRT^*}$ is a constant based on the volume of free space, the exact expression can also be found in \cite{karaman2011sampling}. The points $s_{new}$, $s_{nearest}$ and the set $S_{near}$ are stored together in the map P, which we call the \emph{point cache} and is returned at the end of the procedure. Using this procedure we effectively turn the sampling process of the RRT$^*$ algorithm into a pre-processing step. This means that the expensive \texttt{Nearest} and \texttt{Near} procedures involved, only need to be repeated $|D|$ times instead of $I\times|D|$ times.
-
-
-
-
-	\begin{algorithm}
-	\algsetup{linenosize=\tiny}
-  	\scriptsize
-	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
-	\label{alg:rrt_cache}
-	\begin{algorithmic}[1]
-	\STATE $P \gets \emptyset$ \hfill \COMMENT{Initialise the point cache}
-	\STATE $V \gets {s_{init}}$
-	\FOR{$i=0 \dots p $}
-	\STATE $s_{rand} \gets SampleFree_i$
-	\STATE $s_{nearest} \gets \texttt{Nearest}(V,s_{rand})$
-	\STATE $s_{new} \gets \texttt{Steer}(s_{nearest},s_{rand})$
-	\STATE $S_{near} \gets \texttt{Near}(V,{s_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
-	\STATE $V\gets V \cup s_{new}$
-	\STATE $P \gets P \cup \{s_{new},S_{near}\}$
-	\ENDFOR
-	\RETURN $P$
-
-	\end{algorithmic}
-	\end{algorithm}
-
-	The result of Algorithm \ref{alg:rrt_cache} can now act as input to the second procedure described in Algorithm \ref{alg:plan_cached}. The procedure is very similar to the RRT$^*$ wiring and re-wiring procedures in \cite{karaman2011sampling} and returns a minimum cost path to the goal. An important difference however is that the verteces of the tree and their neighbours at each iteration are already known and contained within the point cache. This speeds up the computation while keeping the planner used during learning and the planner used to execute the final cost function identical. As learning proceeds and the cost function we are required to plan with changes, so will the wiring of this tree, but the points involved in this procedure will not. 
-
-	The full Cached Rapidly Exploring Learning Tree algorithm (RLT$^*$-C) procedure to learn RRT$^*$ cost functions from demonstration is described in Algorithm \ref{alg:ammp}. First we initialise the weights, either randomly or using a cost function that simply favours shortest paths. Then, for each datapoint $\zeta_i$ we calculate feature sums and run \texttt{cacheRRT}. The main learning loop involves cycling through all datapoints and finding the best path under a loss augmented cost function. The feature sums of this path are calculated and subsequently the difference with the demonstrated feature sums is computed. At the end of each iteration an average gradient is calculated and the cost function is updated. At convergence the learned weights are returned.
+Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), which uses  Algorithms \ref{alg:rrt_cache} and \ref{alg:plan_cached}. First, we initialise the weights, either randomly or using a cost function that simply favours shortest paths. Then, for each datapoint $\zeta_i$, we calculate feature sums and run \texttt{cacheRRT}. The main learning loop involves cycling through all data points and finding the best path under a loss-augmented cost function. The feature sums of this path are calculated and subsequently the difference with the demonstrated feature sums is computed. At the end of each iteration, an average gradient is calculated and the cost function is updated. At convergence, the learned weights are returned.
 
 
 
@@ -289,7 +289,7 @@ A simple way to construct a concrete algorithm from AMMP is to use RRT$^*$ as th
 	\begin{algorithm}
 	 \algsetup{linenosize=\tiny}
   	\scriptsize
-	\caption{\texttt{RLT$^*$-C}($D,p,\eta,\lambda,\delta$)\label{alg:ammp}}
+	\caption{\texttt{RLT$^*$}($D,p,\eta,\lambda,\delta$)\label{alg:ammp}}
 	\begin{algorithmic}[1]
 	\STATE $\mathbf{w} \gets \texttt{initialiseWeights}$
 	\STATE $\mathbf{\tilde{F}} \gets \emptyset$
@@ -337,7 +337,7 @@ A simple way to construct a concrete algorithm from AMMP is to use RRT$^*$ as th
 	% \RETURN $R,\pi$
 
 
-For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
+%For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
 
 
 \section{Experiments}
