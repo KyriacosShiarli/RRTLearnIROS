@@ -422,12 +422,12 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 
 	\begin{tabular}{|l|l|l|l|l|}
 	\hline
-	               & MMP$_{0.8}$     & MMP$_{0.3}$       & RRT$^*$  & RLT$^*$-C \\ \hline
+	               & MMP$_{0.8}$     & MMP$_{0.3}$       & RLT$^*$-NC  & RLT$^*$ \\ \hline
 	Iteration (s) & 1.83(0.79) & 20.93(12.14) & 12(0) & 5.87(0.50)  \\ \hline
 	Learning (s) & 275.2      & 3140.6       & 1808  & 911.7       \\ \hline
 	$Q(\zeta,\zeta_i,\mathbf{w}_{gt})$ & 7.28      & 3.14       & 0.57  & 1.57       \\ \hline
 	\end{tabular}
-	\caption{Per iteration and total learning times for our proposed algorithms and the baselines}
+	\caption{Per iteration and total learning times for our proposed algorithms and the baselines (RLT$^*$-NC is RLT$^*$ without caching. \sw{You need to make this table fit in a column width.}}
 	\label{tab:time}
 	\end{table}
 
@@ -437,7 +437,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 	%\vspace{-3.3mm}
 	    \includegraphics[width=0.20\textwidth]{images/path_compare.png}
 	%\vspace{-4mm}
-	  \caption{Qualitative comparison of paths. Goal is at the top left, robot begins on the bottom right. Black: demonstration path. Red: RRT$^*$. Green: MMP$_{0.8}$, Magenta: MMP$_{0.3}$ }
+	  \caption{Qualitative comparison of paths. Goal is at the top left, robot begins on the bottom right. Black: demonstration path. Red: RLT$^*$. Green: MMP$_{0.8}$, Magenta: MMP$_{0.3}$ }
 	  \label{fig:path_compare}
 	\end{figure}
 
@@ -466,8 +466,9 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 
 
 \section{Conclusion and Future Work}
-	In this paper we showed that cost functions for RRT$^*$ planners can be learned from demonstration. We proposed an aproximate version of the Maximum Margin Planning algorithm which we applied in the context of path planning yielding the RLT$^*$ algorithm. We went on to propose a method to achieve significant speedup of this algorithm by exploiting the nature of RRT$^*$, this resulted in the RLT$^*$-C alorithm. In social navigation experiments these algorithms outperform their deterministic counterparts both in terms of their ability to learn a better representation of the underlying cost function and in terms of speed. Although our experimental comparison used A$^*$ as a baseline, it is worth noting that our methods would be especially suited to situations where deterministic planners naturally fail. Such a case would be for example a manipulator with many degrees of freedom. A clear avenue for future work would be to design learning algorithms that explicitly take into account the probabilistic nature of the RRT$^*$ algorithm. We also plan to more exhaustively evaluate our current and future methods using more rigorous baselines.
+In this paper, we proposed Rapidly Exploring Learning Trees (RLT$^*$), which learns the cost functions of Rapidly Exploring Random Trees (RRT) from demonstration, thereby making inverse learning methods applicable to more complex tasks. Our approach extends the Maximum Margin Planning to work with RRT$^*$ cost functions. Furthermore, we proposed a caching scheme that greatly reduces the computational cost of this approach. Experimental results on real and simulated data from a social navigation scenario showed that RLT$^*$ achieves better performance at lower computational cost than existing methods.
 
+ Although our experimental comparison used A$^*$ as a baseline, RLT$^*$ is also well suited to situations where deterministic planners naturally fail, e.g., a manipulator with many degrees of freedom. A clear avenue for future work is to design learning algorithms that explicitly take into account the probabilistic nature of RRT$^*$. We also plan to evaluate RLT$^*$ on data gathered from real robots.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
