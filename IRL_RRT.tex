@@ -324,17 +324,18 @@ Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), w
 	% \RETURN $R,\pi$
 
 
-%For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
+For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
 
 
 \section{Experiments}
-	In Section \ref{subsec:ammp} we discussed how an aproximate version of the original MMP algorithm can be applied to path planning using RRT$^*$ as the underlying planner, resulting in RLT$^*$. In Section \ref{subsec:cached} we introdused RLT$^*$-C, a cached version of RLT$^*$ that allows faster learning. In this section we compare the performance of these two proposed algorithms against the original MMP algorithm, using A$^*$ search.
+In this section, we experimentally compare RLT$^*$ to the original MMP algorithm implemented using an A$^*$ planner, as well as to an ablated version of RLT$^*$ that does not using caching.
 	
-	Our experiments take place in the context of socially appropriate navigation. IRL has been widely used in this setting \cite{okallearning}, \cite{henry2010learning}, \cite{vasquez2014inverse}, because it is usually very hard to hardcode the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports \cite{triebel2015spencer}, museums \cite{thrun1999minerva} and care centers \cite{shiarlis2015teresa}.
+	Our experiments take place in the context of socially intelligent navigation. IRL has been widely used in this setting \cite{okallearning,henry2010learning,vasquez2014inverse} because it is usually infeasible to hard-code the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports \cite{triebel2015spencer}, museums \cite{thrun1999minerva} and care centres \cite{shiarlis2015teresa}.
+	
 	\subsection{Setting}
-	Our experiments take place in a randomly generated social environment, shown in Figure \ref{fig:exp_setting}. Every arrow in the figure represents a person's position and orientation. The robot is given the task of navigating from one point in the room to the other. While it is aware of the orientation and position of different people, it has no idea on how to prioritise reaching the target quickly, avoiding people and nearing obstacles, i.e., the cost function is unknown. Instead, the robot is given a number of demonstrations in the form of a dataset $D$. Each demonstration $\zeta_i$ comes is a set of configurations $s = (x,y)$ representing positions of the robot in the configuration space and each demonstration takes place for a different random configuration of the social environment, i.e., the people are at different positions and orientations every time. The task of the robot is to, using $D$, extract a cost function based on different features of the environment, which in turn would allow it to behave socially in future tasks.
+	Our experiments take place in a randomly generated social environment, shown in Figure \ref{fig:exp_setting}. Every arrow in the figure represents a person's position and orientation. The robot is given the task of navigating from one point in the room to another. While it is aware of the orientation and position of different people, it has no idea on how to trade off reaching the target quickly with avoiding people and obstacles, i.e., the cost function is unknown. Instead, the robot is given a dataset of demonstrations $D$. Each demonstration $\zeta_i$ is a set of configurations $s = (x,y)$ representing positions of the robot in the configuration space and each demonstration takes place for a different random configuration of the social environment, i.e., the people are at different positions and orientations every time. The task of the robot is to, using $D$, extract a cost function based on different features of the environment, which in turn would allow it to behave socially in future tasks.
 
-	The features involved in our experiments include three gaussian functions of different means and diagonal covariances around each person, three different functions that measure distance from the goal and a feature that measures proximity to obstacles. An example cost function over the whole configuration space for the configuration in Figure \ref{fig:exp_setting}  is shown in Figure \ref{fig:cost_f}.
+	The features involved in our experiments include three Gaussian functions of different means and diagonal covariances around each person, three different functions that measure distance from the goal and a feature that measures proximity to obstacles. Figure \ref{fig:cost_f} shows an example cost function over the whole configuration space for the configuration in Figure \ref{fig:exp_setting}.
 
 
 	\begin{figure}[tbh]
@@ -353,7 +354,7 @@ Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), w
   \end{subfigure} 
 
   %\vspace{-3mm}
-  \caption{(a) An instance of the randomised social navigation task used in the experiments. Arrows denote the position and orientation of people in the scene. The robot is in the left hand side of the map and the green box in the bottom right denotes the goal location. (b) The corresponding cost function for the random scenario. Red denotes \emph{low} cost, while purple denotes \emph{high} cost}.
+  \caption{(a) An instance of the randomised social navigation task. Arrows denote the position and orientation of people in the scene. The robot is on the lefthand side of the map and the green box in the bottom right denotes the goal location. (b) The corresponding cost function for the random scenario. Red denotes \emph{low} cost, while purple denotes \emph{high} cost.}
   %\vspace{-3mm}
   \label{fig:setting}
   \end{figure}
@@ -361,18 +362,21 @@ Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), w
 
 	\subsection{Evaluation}
 
-	To evaluate the effectiveness of our algorithms we resort to both quantitative as well as qualitative comparisons.
+	To evaluate the effectiveness of our algorithms we employ both quantitative as well as qualitative comparisons.
 
-	To quantitatively assess the quality of our algorithms we generate a dataset $D^{obj}$ by planning near-optimal paths from an initial configuration $s_o$ to a goal configuration $s_g$ under a ground truth cost function $c_{gt}()$ derived from respective ground truth weights $\mathbf{w}_{gt}$. As mentioned in section \ref{subsec:path_planning} a fully optimal path can only be derived only assymptotically in terms of either time in terms of the RRT$^*$, or resolution in the case of A$^*$. In practice however, we found that planning for 60 seconds using the RRT$^*$ algorithm achieves a path that is very close to optimal. This is concluded by the change in optimal path cost achieved if more sampling time is given to the algorithm. This ground truth dataset is extremmely useful for evaluation. For each path $\zeta$ generated by the learner we know its respective cost under the ground truth cost function simply through the inner product $\mathbf{w}_{gt}$ with the path's feature sums $\mathbf{F}(\zeta)$. Furthermore we can compute the cost difference between the generated path and the example path by,
+	To quantitatively assess the quality of our algorithms, we generate a dataset $D^{obj}$ by planning near-optimal paths from an initial configuration $s_o$ to a goal configuration $s_g$ under a ground-truth cost function $c_{gt}()$ derived from respective ground-truth weights $\mathbf{w}_{gt}$. A fully optimal path can only be derived only asymptotically in terms of either time  for RRT$^*$, or resolution for A$^*$. In practice, however, we found that planning for 60 seconds using  RRT$^*$  achieves a path that is nearly optimal, as running longer leads to negligible changes in path cost. 
+	
+	The resulting ground truth dataset is extremely useful for evaluation. For each path $\zeta$ generated by the learner, we know its cost under the ground-truth cost function is simply  $\mathbf{w}_{gt}\mathbf{F}(\zeta)$. Furthermore, we can compute the cost difference between the generated path and the example path:
 	\begin{equation}
-		Q(\zeta,\zeta_i,\mathbf{w}) = \mathbf{w}(F(\zeta)-F(\zeta_i)). \label{eq:obj_eval}
-	\end{equation} 
-	Assuming the demonstration path $\zeta_i$ is optimal under $\mathbf{w}$, means $Q(\zeta,\zeta_i,\mathbf{w})>=0$, although for the reasons mentioned at the begining of this section it is very hard to guarantee this. Equation \eqref{eq:obj_eval} will be our main means of evaluating the performance of different algorithms. For our experiments the ground truth weights $\mathbf{w}_{gt}$ were chosen mainly in order to bring about a cost function that penalises passing infront of people. In adition, small weights were added to the other two gaussian functions for each each individual person, as well as both linear and exponential penalisation of the distance from the goal. This was done in order to avoid the resulting cost function from being too trivial. Figure \ref{fig:cost_f} shows the resulting cost function from the chosen ground truth weights.
+		Q(\zeta,\zeta_i,\mathbf{w}) = \mathbf{w}(\mathbf{F}(\zeta)-\mathbf{F}(\zeta_i)), \label{eq:obj_eval}
+	\end{equation}
+which is our primary performance metric.  Note that, if the demonstration path $\zeta_i$ is optimal under $\mathbf{w}$, then $Q(\zeta,\zeta_i,\mathbf{w})>=0$.
 
-	Since one of the main contributions in this paper claims a speedup in learning time, we will also use the time per learning iteration as a means of quantitative evaluation. Although the speed of both RRT$^*$ and A$^*$ may vary significantly across implementations, certain algorithmic characteristics do not, for example a higher grid resolution for A$^*$ will most likely result in increased planning time. For both algorithms we use vanilla implementations in Python. In fact all algorithms share similar functions and do not benefit from any kind of special optimisations appart from the one described in Section \ref{subsec:cached}.
+For our experiments, the ground-truth weights $\mathbf{w}_{gt}$ were chosen mainly induce a cost function that penalises passing in front of people. In addition, small weights were added to the other two Gaussian functions for each each individual person, as well as both linear and exponential penalisation of the distance from the goal, so that the resulting cost function, shown in Figure \ref{fig:cost_f}, would not be too trivial. 
 
+We also measure the time per iteration of each learning algorithm.  All algorithms were implemented in Python, share similar functions, and were not optimised for speed apart from the caching scheme in RLT$^*$.
 
-	We also perform qualitative evaluation of the algorithms. We do so by visually comparing the learned cost functions for each algorithm and the paths they generate against the ground truth.
+	We also perform qualitative evaluation of the algorithms by visually comparing the learned cost functions for each algorithm and the paths they generate against the ground truth cost function and the demonstration paths.
 
 	\subsection{Results}
 
