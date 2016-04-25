@@ -210,9 +210,7 @@ The inverse problem can therefore be seen as an iterative procedure, that first 
 
 \subsection{Rapidly Exploring Learning Trees \label{subsec:cached}}
 
-	We call the process of sampling constraints for MMP, Aproximate MMP (AMMP). In this paper, however our focus is on path planning the sampling process for AMMP will be undertaken by the RRT$^*$ algorithm. The whole process of sampling paths using RRT$^*$ and using these to learn cost functions we will refer to as a Rapidly Exploring Learning Tree (RLT$^*$).
-
-For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
+A simple way to construct a concrete algorithm from AMMP is to use RRT$^*$ as the sample-based planner.  However, 
 
 	In Section \ref{subsec:inverse_problem} we explained that learning cost functions for path planning algorithms from demonstration is an iterative procedure where a planner is invoked for a certain configuration of the weights, for every set of initial conditions found in the dataset. Based on the resulting plans the weights are updated in a direction that would bring the resulting paths closer to the ones in the demonstrations. For a prodecure involving $I$ iterations and a dataset of size $|D|$, the planner must be invoked $I\times|D|$ times. Depending on the size of $S$, planning can be a costly procedure, and might render learning impractical. In this section we propose a method that can speed up the learning by exploiting the nature of the RRT$^*$ planner.
 
@@ -330,7 +328,7 @@ For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very
 	% \RETURN $R,\pi$
 
 
-
+For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
 
 
 \section{Experiments}
