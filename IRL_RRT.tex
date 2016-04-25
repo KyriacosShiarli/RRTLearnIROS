@@ -97,7 +97,7 @@ To apply IRL to more realistic situations, researchers usually try to replace th
 
 Other approaches to the problem use hybrid planners. Inverse Optimal Heuristic Control \cite{ratliff2009inverse} models the long-term goals of the agent as a coarse state MDP, to ensure tractability, while using supervised learning to determine the local policy of the agent at each state. Graph-Based IOC \cite{byravan2015graph} uses discrete optimal control on a coarse graph and the actual path is executed using local trajectory optimisation techniques such as CHOMP \cite{ratliff2009chomp}, which would otherwise suffer from local minima. The method is effective in robotic manipulation tasks with many degrees of freedom.  However, these methods employ complex and domain-specific planning formulations that are not suitable for all robotics tasks. The method presented here employs widely used planners, making it versatile and easy to implement. 
 
-Another more recent graph-based concept is that of Adaptive State Graphs \cite{okallearning}, which build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. This can have adverse effect since an implicit assumption of IRL is that the demonstration paths came from the same planner that we use during learning. This planner has specific representations, such as discretisation and parameters such as the discount factor. If these change, different policies arise. As a result a path that was optimal under a certain planner seizes to be optimal under another.  \sw{Why is that bad?}
+Another more recent graph-based concept is that of Adaptive State Graphs \cite{okallearning}, which build a controller graph before doing any learning. This controller graph is akin to \emph{options} in semi-Markov decision processes, and allows for a more flexible representation of the state-action space. However, the controller used to learn underlying cost function is not the same as the one used to execute the robot's behaviour. This can have adverse effect since an implicit assumption of IRL is that the demonstration paths came from the same planner that we use during learning. This planner has specific representations, such as discretisation and parameters such as the discount factor. If these change, different policies arise. As a result a path that was optimal under a certain planner seizes to be optimal under another.
 
 RLT$^*$ can also be viewed as a graph-based, or rather tree-based, approach. Instead of building a controller graph first and then using different controllers to optimise trajectories, RLT$^*$ builds a controller tree on the fly. RLT$^*$ however uses the exact same planner during learning and execution.
 
@@ -433,7 +433,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
   \end{subfigure} 
 
   %\vspace{-3mm}
-  \caption{Train and test set average cost difference, for 15 iterations. Error bars represent standard error over four independent runs on shuffled versions of the data. }
+  \caption{Train and test set average cost difference, for 15 iterations. Error bars represent standard error over four independent runs on shuffled versions of the data. (RLT$^*$-NC is RLT$^*$ without caching.)}
   %\vspace{-3mm}
   \label{fig:results}
 \end{figure}
@@ -449,7 +449,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 	Learning (s) & 275.2      & 3140.6       & 1808  & 911.7       \\ \hline
 	$Q(\zeta,\zeta_i,\mathbf{w}_{gt})$ & 7.28      & 3.14       & 0.57  & 1.57       \\ \hline
 	\end{tabular}}
-	\caption{Per iteration and total learning times for our proposed algorithms and the baselines (RLT$^*$-NC is RLT$^*$ without caching.}
+	\caption{Per iteration and total learning times for our proposed algorithms and the baselines (RLT$^*$-NC is RLT$^*$ without caching.)}
 	\label{tab:time}
 	\end{table}
 
