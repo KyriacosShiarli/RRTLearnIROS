@@ -73,13 +73,13 @@ In this paper, we propose Rapidly Exploring Learning Trees (RLT$^*$), which lear
 
 Learning from demonstration (LfD) \cite{argall2009survey} is of great interest to roboticists because it can avoid the need for tedious manual programming of complex behaviours. While most LfD methods rely on supervised learning to directly learn policies, certain approaches, namely inverse optimal control (IOC) \cite{kalman1964linear} and inverse reinforcement learning (IRL) \cite{abbeel2004apprenticeship} instead learn \emph{cost functions} from demonstration. These cost functions are then used to \emph{plan} the robot's behaviour. 
 
-Cost functions tend to be more general and robust to changes in the environment such as friction in a manipulator's joints. A robot trained in a supervised manner has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succinct representations of the aims of the agent \cite{abbeel2004apprenticeship}. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
+Cost functions tend to be more general and robust to changes in the environment such as friction in a manipulator's joints. A robot trained using direct policy estimation (or behavioural cloning), has less chance of adapting than one that has been trained using IRL or IOC because the cost function remains unchanged. In addition, cost functions are thought to be more succinct representations of the aims of the agent \cite{abbeel2004apprenticeship}. %For example, an agent that whose aim is to get as fast as possible to a goal location. The policy for such an agent will be much harder to interpret when compared to its cost function. 
 
-However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which is typically impractical in robotics, for several reasons.  Firstly, an MDP assumes full observability. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and high-dimensional domains. Finally, the lack of scalability and the assumption of full observability prohibit the natural modeling of important factors such as kinodynamic constraints. 
+However, inverse methods also have practical limitations. IRL for example requires modeling the task as a Markov decision process (MDP), which is typically impractical in robotics, for several reasons.  Firstly, an MDP assumes full observability. Secondly, planning in an MDP, which IRL methods must do repeatedly, is costly, especially in continuous and high-dimensional domains. Finally, the lack of scalability and the assumption of full observability prohibit the accurate modeling of all aspect of the environment that a robot is expected to operate in. 
 
-For these reasons, several researchers have proposed replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP)~\cite{ratliff2006maximum} uses A$^*$ search for planning. This avoids the need to do all the planning in advance, as is typical when solving an MDP. It also avoids the need to model all aspects of the environment since the robot can quickly replan its trajectory to account for uncertainty. However, deterministic search methods such as A$^*$ require discretisation of the state space, and quickly run into scalability problems as the discretisation becomes finer. Furthermore, this discretisation again ignores kinodynamic constraints.
+For these reasons, several researchers have proposed replacing the planning step in IRL with more convienient planners, e.g., Maximum Margin Planning (MMP)~\cite{ratliff2006maximum} uses A$^*$ search for planning. This avoids the need to do all the planning in advance, as is typical when solving an MDP. It also avoids the need to model all aspects of the environment since the robot can quickly replan its trajectory to account for uncertainty. However, deterministic search methods such as A$^*$ require discretisation of the state space, and quickly run into scalability problems as the discretisation becomes finer. 
 
-In path planning, Rapidly Exploring Random Trees (RRTs)~\cite{lavalle1998rapidly} are popular because they cope well with continuous and high-dimensional domains and can elegantly handle kinodynamic constraints. The RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially effective. However, the cost functions used by RRT$^*$ are typically simple and hand-coded and, to our knowledge, no methods have been developed to learn RRT$^*$ cost functions from demonstrations.
+In path planning, Rapidly Exploring Random Trees (RRTs)~\cite{lavalle1998rapidly} are popular because they cope well with continuous and high-dimensional domains. The RRT$^*$ algorithm \cite{karaman2011sampling}, which extends RRTs to incorporate a cost function, is especially effective. However, the cost functions used by RRT$^*$ are typically simple and hand-coded and, to our knowledge, no methods have been developed to learn RRT$^*$ cost functions from demonstrations.
 
 
 In this paper, we propose Rapidly Exploring Learning Trees (RLT$^*$), which learns RRT$^*$ cost functions from demonstration. Specifically we modify Maximum Margin Planning to use RRT$^*$ as a planner. Furthermore, we propose a caching scheme that greatly reduces the computational cost of this approach. RLT$^*$ requires no additional planner assumptions other than those inherent in RRT$^*$, making it particularly easy to implement. 
@@ -89,7 +89,7 @@ We evaluate RLT$^*$ on real and simulated data from a social navigation scenario
 \section{Related Work}
 
 
-Substantial research has applied IRL to robotics \cite{henry2010learning,abbeel2008apprenticeship,vasquez2014inverse}. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space. This introduces several key limitations. First, the size of the state-action space encountered in robotics is often prohibitive for such models. Second, the specific kinodynamic constraints of the robot cannot be easily be expressed by such representations, as they introduce non-Markovian dynamics. 
+Substantial research has applied IRL to robotics \cite{henry2010learning,abbeel2008apprenticeship,vasquez2014inverse}. Because of the need to model the environment as an MDP, researchers usually discretise the state-action space. This introduces several key limitations. First, the size of the state-action space encountered in robotics is often prohibitive for such models. Second, the specific not all physical aspects of the robot can be easily expressed by such representations, introducing non-Markovian dynamics. 
 
 % \ks{Depending on the state-action space discretisation, past actions can infuence how easy it is to move to any a subsequent state. However the transition function only considers only one action in the past, and it is therefore an expectation over possible past configurations. As a result it tends to give the wrong probability distribution over next states for the actual physical system. Do I have to explain this in detail? Maybe Joao has a citation from his research?}
 
@@ -118,17 +118,18 @@ This cost functional is similar to the one encountered in optimal control as wel
 \end{equation}
 where $Z_{o,g}$ is the set of all possible paths such that $s_1 = o, s_{l_\zeta} = g$.
 
-Many path planning algorithms discretise $\mathcal{S}$ and use graph search algorithms like A$^*$ to find the optimal path. Under mild assumptions, these approaches are guaranteed to find the best path on the graph, therefore solving \eqref{eq:back_plan} for a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$, whose size depends on the graph resolution (discretisation). However, such methods scale poorly in the size of $\mathcal{S}$, as larger and larger graphs need to be searched. Furthermore, such methods do not address kinodynamic constraints, i.e., they assume that every configuration on the graph is accessible from a neighbouring one. 
+Many path planning algorithms discretise $\mathcal{S}$ and use graph search algorithms like A$^*$ to find the optimal path. Under mild assumptions, these approaches are guaranteed to find the best path on the graph, therefore solving \eqref{eq:back_plan} for a subset $\tilde{Z}_{o,g} \in  Z_{o,g}$, whose size depends on the graph resolution (discretisation). However, such methods scale poorly in the size of $\mathcal{S}$, as larger and larger graphs need to be searched.
 
-These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$. Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. The algorithm, for which a detailed description and analysis can be found in \cite{karaman2011sampling}, essentially consists of two interleaved processes. 
+These drawbacks motivate \emph{sample-based} path planning algorithms such as RRT$^*$ and PRM$^*$. The application focus of this paper is social robotic navigation, which typically consists of highly non-static environments. Therefore multi-query roadmap methods such as PRM$^*$ are not appropriate, since we would need to repeat the learning phase of the algorithm every time as the environment changes. As a result this paper employs RRT$^*$ as the underlying planner for the cost function learning process. 
 
-The first process is that of \emph{sampling}. A random point $s_{rand}$ is sampled from the configuration space. Next, the closest point $s_{closest}$, already in the existing vertex set $V$ is determined and a new point $s_{new}$ is created by \emph{steering} from  $s_{closest}$ to $s_{rand}$. This steering can be done in a way such that kinodynamic constraints are met. The final step in the sampling process is to determine the radius neighbours, $S_{near}$, of the point $s_{new}$.
+ Instead of building a graph and then searching it, RRT$^*$ builds a tree on the fly and keeps track of the current best path. The algorithm, for which a detailed description and analysis can be found in \cite{karaman2011sampling}, essentially consists of two interleaved processes. 
+
+The first process is that of \emph{sampling}. A random point $s_{rand}$ is sampled from the configuration space. Next, the closest point $s_{closest}$, already in the existing vertex set $V$ is determined and a new point $s_{new}$ is created by \emph{steering} from  $s_{closest}$ to $s_{rand}$. The final step in the sampling process is to determine the radius neighbours, $S_{near}$, of the point $s_{new}$.
 
 The second process is that of \emph{rewiring}. During this process, we determine which of the points in $S_{near}$ we should connect to $s_{new}$, i.e., determining which path to $s_{new}$ results in a lowest cost path. Finally we repeat the process for the parents of $S_{near}$. In other words, the tree is rewired locally around the new point, such that lower global cost paths arise.
 
-Repeating these two processes interchangably for a given time budget $T$, solves \eqref{eq:back_plan} for a subset $\tilde{Z}_{o,g}$ that is determined by the randomly sampled points. As $T \rightarrow \infty$, RRT$^*$ minimises over the entire $Z_{o,g}$, i.e., it is asymptotically optimal in time, (while A$^*$ is asymptotically optimal in resulution).
+Repeating these two processes interchangably for a given time budget $T$, solves \eqref{eq:back_plan} for a subset $\tilde{Z}_{o,g}$ that is determined by the randomly sampled points. As $T \rightarrow \infty$, RRT$^*$ minimises over the entire $Z_{o,g}$, i.e., it is asymptotically optimal in time, (while A$^*$ is asymptotically optimal in resolution).
 
-It should be clear from above that while the rewiring step requires the sampling step, the reverse is not true. In this paper we will leverage this characteristic of the algorithm in order to speed up the learning process.
 
 
 %  RRT$^*$ is also asymptotically optimal, i.e., it is guranteed to find an optimal path in $\mathcal{S}$ as the sampling time goes to infinity. Many variants of RRT$^*$ provide improved performance and faster convergence in practice by, for example, heuristically shriking the sampling space \cite{gammell2014informed}.
@@ -160,8 +161,7 @@ $Z_{o_i,g_i}$ can be large but if we have an optimisation procedure that solves 
 	C(\zeta^i_{o_i,g_i}) \leq \min_{\zeta \in Z_{o_i,g_i}} C(\zeta) \quad \forall i, \label{eq:const}
 \end{equation}
 
-Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. The full optimisation formulation of Maximum Margin Planning is as follows.
-
+Ratliff et al.\ \cite{ratliff2006maximum} propose a maximum margin variant of \eqref{eq:const} by introducing a margin function $L_i(\zeta)$ that decreases the cost of the proposed path $\zeta$ if is dissimilar to $\zeta^i_{o_i,g_i}$. For example, $L_i(\zeta)$ could be $-1$ times the number of configurations in the demonstration path not visited by $\zeta$. This margin is very similar to the one encountered in Support Vector Machines. The intuition is that by requiring the model to fit the data well even if we are using a margin against, will result in better generalisation. The full optimisation formulation of Maximum Margin Planning is as follows.
 \begin{equation}
 	\argmin_{\mathbf{w},\tau} \frac{1}{2}||\mathbf{w}||^2 + \frac{\lambda}{D} \sum_i \tau_i \label{eq:mas_marg}
 \end{equation}
@@ -230,14 +230,33 @@ Two of the most costly operations of RRT$^*$ are 1) finding the nearest neighbou
 
 	The first step is described in Algorithm \ref{alg:rrt_cache}, which takes as input $p$, the number of points to randomly sample from free space; $s_{init}$, the initial point; and $\eta$, the steer step size. For each randomly sampled point $s_{rand}$, we find the nearest neighbour, $s_{nearest}$, from the set of points in the vertex set $V$. We then create a new configuration point $s_{new}$ by steering from $s_{nearest}$ to $s_{rand}$. Next, we query the radius neighbours of $s_{new}$ at a radius determined by  $\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\}$. Here, $d$ is the dimensionality of $S$, and $\gamma_{RRT^*}$ is a constant based on the volume of free space (see \cite{karaman2011sampling}). The points $s_{new}$, $s_{nearest}$ and the set $S_{near}$ are stored together in the map $P$, which we call the \emph{point cache}, and is returned at the end of the procedure. This algorithm turns the sampling process of RRT$^*$  into a preprocessing step. Consequently, the expensive \texttt{Nearest} and \texttt{Near} procedures only need to be repeated $|D|$ times instead of $I\times|D|$ times.
 
+
+
 	\begin{algorithm}
-		 \algsetup{linenosize=\small}
+	 \algsetup{linenosize=\small}
  	\scriptsize
+	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
+	\label{alg:rrt_cache}
+	\begin{algorithmic}[1]
+	\STATE $P \gets \emptyset$ \hfill \COMMENT{Initialise the point cache}
+	\STATE $V \gets {s_{init}}$
+	\FOR{$i=0 \dots p $}
+	\STATE $s_{rand} \gets SampleFree_i$
+	\STATE $s_{nearest} \gets \texttt{Nearest}(V,s_{rand})$
+	\STATE $s_{new} \gets \texttt{Steer}(s_{nearest},s_{rand})$
+	\STATE $S_{near} \gets \texttt{Near}(V,{s_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
+	\STATE $V\gets V \cup s_{new}$
+	\STATE $P \gets P \cup \{s_{new},S_{near}\}$
+	\ENDFOR
+	\RETURN $P$
+	\end{algorithmic}
+	\end{algorithm}
 
+	\begin{algorithm}
+	\algsetup{linenosize=\small}
+ 	\scriptsize
 	\caption{\texttt{planCachedRRT$^*$}($P$,$s_{init}$,$c()$)}
-
 	 \label{alg:plan_cached}
-
 	\begin{algorithmic}[1]
 	\STATE $E \gets \emptyset$
 	\STATE $V \gets {s_{init}}$
@@ -266,29 +285,10 @@ Two of the most costly operations of RRT$^*$ are 1) finding the nearest neighbou
 	\STATE $\zeta_{min} \gets \texttt{minCostPath}(V,E,c())$
 	\RETURN $\zeta_{min}$
 	\end{algorithmic}
+
 	\end{algorithm}
+	\vspace{-3mm}
 
-
-	\begin{algorithm}
-	 \algsetup{linenosize=\small}
- 	\scriptsize
-	\caption{\texttt{cacheRRT}($p$,$s_{init}$,$\eta$)}
-	\label{alg:rrt_cache}
-	\begin{algorithmic}[1]
-	\STATE $P \gets \emptyset$ \hfill \COMMENT{Initialise the point cache}
-	\STATE $V \gets {s_{init}}$
-	\FOR{$i=0 \dots p $}
-	\STATE $s_{rand} \gets SampleFree_i$
-	\STATE $s_{nearest} \gets \texttt{Nearest}(V,s_{rand})$
-	\STATE $s_{new} \gets \texttt{Steer}(s_{nearest},s_{rand})$
-	\STATE $S_{near} \gets \texttt{Near}(V,{s_{new}},\min\{\gamma_{RRT^*}(\frac{\log(|V|)}{|V|})^{\frac{1}{d}},\eta\})$ 
-	\STATE $V\gets V \cup s_{new}$
-	\STATE $P \gets P \cup \{s_{new},S_{near}\}$
-	\ENDFOR
-	\RETURN $P$
-
-	\end{algorithmic}
-	\end{algorithm}
 
 The output of Algorithm \ref{alg:rrt_cache} is input to Algorithm \ref{alg:plan_cached}, which resembles wiring and re-wiring procedures in RRT$^*$ \cite{karaman2011sampling}, and returns a minimum cost path to the goal. An important difference, however, is that the vertices of the tree and their neighbours at each iteration are already known and contained within the point cache. This speeds computation while keeping consistency between the planners used during learning and final execution. As learning proceeds and the cost function changes, so does the wiring of this tree; however, the points involved do not change.
 
@@ -330,6 +330,7 @@ Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), w
 
 	\end{algorithmic}
 	\end{algorithm}
+	\vspace{-3mm}
 
 	% \STATE $\widetilde{\mu}^{\mathcal{D}} \gets \mathtt{empiricalFE}(\mathcal{D})$\hfill \COMMENT{using \eqref{eqn:empirical_fe}}
 	% \STATE $\widetilde{\mu}^{\mathcal{F}} \gets \mathtt{empiricalFE}(\mathcal{F})$ 
@@ -353,37 +354,40 @@ Algorithm \ref{alg:ammp} describes Rapidly Exploring Learning Trees (RLT$^*$), w
 
 For RRT$^*$ the dependance of $\tilde{Z}_{o_i,g_i}$ on the time budget T is very hard to quantify since it also depends on the size and nature of $S$ as well as the cost function we are using -which also changes with every iteration. For this reason, in this paper we resort to an experimental assesment of the ability of RRT$^*$ to sample the right constraints at every iteration of RLT$^*$ and hence allow the learning of a cost function from a set of demonstrated paths.
 
-
+\vspace{-2mm}
 \section{Experiments}
-In this section, we experimentally compare RLT$^*$ to the original MMP algorithm implemented using an A$^*$ planner, as well as to an ablated version of RLT$^*$ that does not using caching.
+In this section, we experimentally compare RLT$^*$ to the original MMP algorithm implemented using an A$^*$ planner and an ablated version of RLT$^*$ that does not use caching.
 	
 	Our experiments take place in the context of socially intelligent navigation. IRL has been widely used in this setting \cite{okallearning,henry2010learning,vasquez2014inverse} because it is usually infeasible to hard-code the cost functions that a planner should use in complex social situations. Having the ability to quickly and effectively learn social navigation cost functions from demonstration would be a major asset for robots that operate in crowded environments such as airports \cite{triebel2015spencer}, museums \cite{thrun1999minerva} and care centres \cite{shiarlis2015teresa}.
 	
 	\subsection{Setting}
 	Our experiments take place in a randomly generated social environment, shown in Figure \ref{fig:exp_setting}. Every arrow in the figure represents a person's position and orientation. The robot is given the task of navigating from one point in the room to another. While it is aware of the orientation and position of different people, it has no idea on how to trade off reaching the target quickly with avoiding people and obstacles, i.e., the cost function is unknown. Instead, the robot is given a dataset of demonstrations $D$. Each demonstration $\zeta_i$ is a set of configurations $s = (x,y)$ representing positions of the robot in the configuration space and each demonstration takes place for a different random configuration of the social environment, i.e., the people are at different positions and orientations every time. The task of the robot is to, using $D$, extract a cost function based on different features of the environment, which in turn would allow it to behave socially in future tasks.
 
-	The features involved in our experiments can be divided in three sets. The first set encodes proxemics to the people present in the scene. These are represented by three Gaussian functions of different means and diagonal covariances around each person. The second set of features encodes the distance from the target location using linear, exponential and logarithmic functions. The third set endcodes proximity to obstacles. Figure \ref{fig:cost_f} shows an example cost function over the whole configuration space for the configuration in Figure \ref{fig:exp_setting}.
+	The features involved in our experiments can be divided in three sets. The first set encodes proxemics to the people present in the scene. These are represented by three Gaussian functions of different means and diagonal covariances around each person. The second set of features encodes the distance from the target location using linear, exponential and logarithmic functions. The third set encodes the obstacle cost using a stable function of the reciprocal of the distance from the nearest obstacle. Figure \ref{fig:cost_f} shows an example cost function over the whole configuration space for the configuration in Figure \ref{fig:exp_setting}. We use different functions for human and target proximity, to allow for more degrees of freedom when modeling the underlying cost function. Sufficient regularisation ensures that that the model does not overfit.
 
 
 	\begin{figure}[tbh]
 %	\hspace{-5cm}
 
-      \begin{subfigure}[b]{0.435\columnwidth}
+      \begin{subfigure}[b]{0.42\columnwidth}
 	\hspace{5mm}
     \includegraphics[width=0.7\textwidth]{images/people.png}
     \caption{Example setting }
     \label{fig:exp_setting}
   \end{subfigure}
   \hspace{10mm}
-  \begin{subfigure}[b]{0.435\columnwidth}
+  \begin{subfigure}[b]{0.42\columnwidth}
   \hspace{4mm}
     \includegraphics[width=0.7\textwidth]{images/cost_f.png}
     \caption{Cost function}
     \label{fig:cost_f}
+
   \end{subfigure} 
 
   %\vspace{-3mm}
   \caption{(a) An instance of the randomised social navigation task. Arrows denote the position and orientation of people in the scene. The robot is on the lefthand side of the map and the green box in the bottom right denotes the goal location. (b) The corresponding cost function for the random scenario. Red denotes \emph{low} cost, while purple denotes \emph{high} cost.}
+
+    \vspace{-1mm}
 
   %\vspace{-3mm}
   \label{fig:setting}
@@ -391,8 +395,6 @@ In this section, we experimentally compare RLT$^*$ to the original MMP algorithm
 
 
 	\subsection{Evaluation}
-
-	To evaluate the effectiveness of our algorithms we employ both quantitative as well as qualitative comparisons.
 
 	To quantitatively assess the quality of our algorithms, we generate a dataset $D$ by planning near-optimal paths from an initial configuration $s_o$ to a goal configuration $s_g$ under a ground-truth cost function $c_{gt}()$ derived from respective ground-truth weights $\mathbf{w}_{gt}$. A fully optimal path can only be derived only asymptotically in terms of either time  for RRT$^*$, or resolution for A$^*$. In practice, however, we found that planning for 60 seconds using  RRT$^*$  achieves a path that is nearly optimal, as running longer leads to negligible changes in path cost. 
 
@@ -427,7 +429,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 	\centering
 %	\hspace{-5cm}
       	\hspace{-12mm}
-      \begin{subfigure}[b]{0.455\columnwidth}
+      \begin{subfigure}[b]{0.42\columnwidth}
 
     \includegraphics[clip=true,width=1.28\textwidth]{images/cost_diff_train.png}
     \caption{Train}
@@ -435,23 +437,23 @@ The results show that both versions of RLT$^*$ always outperform both versions o
   \end{subfigure}
  % \hspace{5mm}
  \hspace{5mm}
-  \begin{subfigure}[b]{0.455\columnwidth}
+  \begin{subfigure}[b]{0.42\columnwidth}
     \includegraphics[clip=true,width=1.28\textwidth]{images/cost_diff_val.png}
     \caption{Test}
     \label{fig:test_results}
+
   \end{subfigure} 
 
   %\vspace{-3mm}
   \caption{Train and test set average cost difference, for 15 iterations. Error bars represent standard error over four independent runs on shuffled versions of the data. (RLT$^*$-NC is RLT$^*$ without caching.)}
-  %\vspace{-3mm}
+  \vspace{-3mm}
   \label{fig:results}
 \end{figure}
 
 
 
 	\begin{table}[]
-	\vspace{2mm}
-	\scalebox{0.83}{
+	\scalebox{0.82}{
 	\begin{tabular}{|l|l|l|l|l|}
 	\hline
 	               & MMP$_{0.8}$     & MMP$_{0.3}$       & RLT$^*$-NC  & RLT$^*$ \\ \hline
@@ -467,7 +469,7 @@ The results show that both versions of RLT$^*$ always outperform both versions o
 	\begin{figure}
 	\centering
 	%\vspace{-3.3mm}
-	    \includegraphics[width=0.22\textwidth]{images/path_compare.png}
+	    \includegraphics[width=0.2\textwidth]{images/path_compare.png}
 	%\vspace{-4mm}
 	  \caption{Qualitative comparison of paths. Goal is at the top left, robot begins on the bottom right. Black: demonstration path. Red: RLT$^*$. Green: MMP$_{0.8}$, Magenta: MMP$_{0.3}$ }
 	  \label{fig:path_compare}
@@ -496,11 +498,11 @@ The results show that both versions of RLT$^*$ always outperform both versions o
   	  \caption{Ground truth and learned cost functions using MMP$_{0.3}$ and RLT$^*$.  \label{fig:cfs}}
   \end{figure}
 
-
+\vspace{-2mm}
 \section{Conclusion and Future Work}
 In this paper, we proposed Rapidly Exploring Learning Trees (RLT$^*$), which learns the cost functions of Rapidly Exploring Random Trees (RRT) from demonstration, thereby making inverse learning methods applicable to more complex tasks. Our approach extends the Maximum Margin Planning to work with RRT$^*$ cost functions. Furthermore, we proposed a caching scheme that greatly reduces the computational cost of this approach. Experimental results on real and simulated data from a social navigation scenario showed that RLT$^*$ achieves better performance at lower computational cost than existing methods.
 
- Although our experimental comparison used A$^*$ as a baseline, RLT$^*$ is also well suited to situations where deterministic planners naturally fail, e.g., a manipulator with many degrees of freedom. A clear avenue for future work is to design learning algorithms that explicitly take into account the probabilistic nature of RRT$^*$. We also plan to evaluate RLT$^*$ on data gathered from real robots.
+ Although our experimental comparison used A$^*$ as a baseline, RLT$^*$ is also well suited to situations where deterministic planners naturally fail, e.g., a manipulator with many degrees of freedom. In future work we aim to design learning algorithms that explicitly take into account the sampling nature of RRT$^*$. We also plan to evaluate RLT$^*$ on data gathered from real robots.
 
 \vspace{15mm}
 \bibliographystyle{IEEEtran}
